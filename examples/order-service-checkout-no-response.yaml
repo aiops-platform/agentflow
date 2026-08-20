@@ -1,0 +1,40 @@
+name: order-service-checkout-no-response
+inputs:
+  repo: { type: string }
+  bug_report: { type: object, required: true }
+nodes:
+  triage:    { agent: triage,           params: { bug: "$.inputs.bug_report" } }
+  logs:      { agent: log-analyst,      params: { bug: "$.nodes.triage.output.summary" } }
+  trace:     { agent: trace-analyst,    params: { bug: "$.nodes.triage.output.summary" } }
+  metrics:   { agent: metrics-analyst,  params: { bug: "$.nodes.triage.output.summary" } }
+  infra:     { agent: infra-locator,    params: { bug: "$.nodes.triage.output.summary" } }
+  locate:    { agent: code-locator,     params: { bug: "$.nodes.triage.output.summary", repo: "$.inputs.repo" } }
+  know:      { agent: knowledge-lookup, params: { bug: "$.nodes.triage.output.summary" } }
+  rca:       { agent: root-cause,       params: { logs: "$.nodes.logs.output", trace: "$.nodes.trace.output",
+                                                  metrics: "$.nodes.metrics.output", infra: "$.nodes.infra.output",
+                                                  code: "$.nodes.locate.output", know: "$.nodes.know.output" } }
+  plan:      { agent: fix-planner,      params: { rca: "$.nodes.rca.output" } }
+  fix:       { agent: fix-implementer,  params: { plan: "$.nodes.plan.output" }, approve: high-risk }
+  test:      { agent: tester,           params: { fix: "$.nodes.fix.output" } }
+  review:    { agent: reviewer,         params: { diff: "$.nodes.fix.output.diff" } }
+  commit:    { agent: committer,        params: { diff: "$.nodes.fix.output.diff", test: "$.nodes.test.output" }, approve: write }
+  recap:     { agent: postmortem,       params: { rca: "$.nodes.rca.output", fix: "$.nodes.fix.output" } }
+edges:
+  - { from: triage, to: logs }
+  - { from: triage, to: trace }
+  - { from: triage, to: metrics }
+  - { from: triage, to: infra }
+  - { from: triage, to: locate }
+  - { from: triage, to: know }
+  - { from: logs, to: rca }
+  - { from: trace, to: rca }
+  - { from: metrics, to: rca }
+  - { from: infra, to: rca }
+  - { from: locate, to: rca }
+  - { from: know, to: rca }
+  - { from: rca, to: plan }
+  - { from: plan, to: fix }
+  - { from: fix, to: test }
+  - { from: test, to: review, when: "$.nodes.test.output.passed == true" }
+  - { from: review, to: commit }
+  - { from: commit, to: recap }

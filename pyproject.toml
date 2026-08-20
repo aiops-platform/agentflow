@@ -6,12 +6,17 @@ build-backend = "setuptools.build_meta"
 name = "agentflow"
 version = "0.1.0"
 description = "AIOps Bug Fix 智能体工作流平台（opencode 编排 + 数据源 MCP + opensandbox 沙箱）"
+readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "fastmcp>=3.0",
     "httpx>=0.27",
     "pydantic>=2.7",
+    "pyyaml>=6.0",
 ]
+
+[project.scripts]
+agentflow = "agentflow.cli:main"
 
 [project.optional-dependencies]
 dev = [
