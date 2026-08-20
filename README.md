@@ -163,24 +163,25 @@ for t in tests/*.py; do PYTHONPATH=. python "$t"; done
 
 ## 前端 UI（流程配置 + Bug 解决可视化）
 
-Vue 3 + Vite + Vue Flow 单页应用，两个页面：
+前端在**独立 repo**：[github.com/xqfgbc/agentflow-ui](https://github.com/xqfgbc/agentflow-ui)（Vue 3 + Vite + Vue Flow）。
 
 - **流程配置**：粘贴 workflow YAML → 节点图（节点 + 方向箭头）预览 → 保存到后端 → 列表复用。
-- **Bug 解决**：粘贴 ticket JSON → 选流程 → 开始 → 流程图展示各节点状态（按状态着色）+ 点节点看输入 prompt / 输出 / token → 总 token 消耗。
+- **Bug 解决**：粘贴 ticket JSON → 选流程 → 开始/停止 → 流程图实时状态（done/running/pending 三态区分）+ 点节点看格式化输出 / prompt / token → 总 token 消耗。
 
 本地开发：
 
 ```bash
-# 后端（另开终端）
+# 后端（本 repo）
 uvicorn agentflow.server:app --host 0.0.0.0 --port 8000
-# 前端（dev 代理 API 到 8000）
-cd frontend && npm install && npm run dev   # http://localhost:5173
+# 前端（独立 repo，dev 代理 API 到 8000）
+git clone https://github.com/xqfgbc/agentflow-ui.git
+cd agentflow-ui && npm install && npm run dev   # http://localhost:5173
 ```
 
-Docker 部署（前后端一起）：
+Docker 部署（前后端一起，前端用镜像 `xqfgbc/aiops-agentflow-frontend`）：
 
 ```bash
-docker compose up --build
+docker compose up -d
 # 前端 http://localhost:8080，后端 http://localhost:8000
 # 依赖宿主机的 opencode serve(4090) / opensandbox-server(8080) / ES(19200) / Prometheus(19090)
 ```
