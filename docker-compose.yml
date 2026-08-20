@@ -1,7 +1,7 @@
 # AIOps Bug Fix 平台编排：backend（FastAPI 编排 API）+ frontend（Vue 流程图 UI）。
 # opencode serve / opensandbox-server / ES / Prometheus 跑在宿主机，经 host.docker.internal 访问。
 services:
-  backend:
+  agentflow:
     build:
       context: .
       dockerfile: docker/Dockerfile
@@ -25,4 +25,4 @@ services:
     ports:
       - "8080:80"
     depends_on:
-      - backend
+      - agentflow
