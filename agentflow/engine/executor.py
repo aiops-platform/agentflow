@@ -211,6 +211,8 @@ class DAGExecutor:
         for attempt in range(max_retry + 1):
             paths.ensure_node(node_id, attempt)
             params = ctx.resolve_params(node.params)
+            if node.input_view == "summary":
+                params = self._crop_summary(node.params, params)
             prompt = self._build_prompt(node.agent, params, spec)
             try:
                 final_text, tokens, cost = await self._run_agent(node.agent, prompt, spec, run_id, node_id)
@@ -317,6 +319,22 @@ class DAGExecutor:
             except Exception:  # noqa: BLE001 —— json5 不可用或仍解析失败则放弃
                 pass
         return None
+
+    @staticmethod
+    def _crop_summary(param_refs: dict[str, str], resolved: dict[str, Any]) -> dict[str, Any]:
+        """input_view=summary 时，把整个 output 引用（$.nodes.<id>.output）裁剪成去掉 details。
+
+        只对「整个 output」的引用裁剪（去掉 details 大字段，如 error_stack/span_tree/diff）；
+        特定字段引用（.output.summary / .output.diff）和全局引用（$.inputs.*）保持原样。
+        """
+        out: dict[str, Any] = {}
+        for key, ref in param_refs.items():
+            val = resolved[key]
+            if isinstance(ref, str) and ref.endswith(".output") and isinstance(val, dict):
+                out[key] = {k: v for k, v in val.items() if k != "details" and v is not None}
+            else:
+                out[key] = val
+        return out
 
     def _build_prompt(self, agent: str, params: dict[str, Any], spec: AgentSpec | None) -> str:
         schema = spec.output_schema if spec else AGENT_OUTPUT_SCHEMAS.get(agent)

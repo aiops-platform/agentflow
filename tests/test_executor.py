@@ -189,6 +189,49 @@ async def test_cost_budget():
     print("  ✓ test_cost_budget")
 
 
+async def test_input_view_summary():
+    wf = _wf(
+        "input_view_summary",
+        {
+            "logs": NodeDef(agent="log-analyst", params={"bug": "$.inputs.bug"}),
+            "rca": NodeDef(agent="root-cause", params={"logs": "$.nodes.logs.output"}),
+        },
+        [EdgeDef(from_="logs", to="rca")],
+    )
+    responses = {
+        "log-analyst": {"summary": "磁盘满", "details": {"error_stack": "AAAA"}},
+        "root-cause": {"summary": "根因", "confidence": 0.9},
+    }
+    rt = FakeRuntime(responses)
+    ex = DAGExecutor(rt, concurrency=4)
+    await ex.run(wf, inputs={"bug": "x"})
+    rca_prompt = rt.prompts["root-cause"]
+    assert "error_stack" not in rca_prompt  # summary 视图：details 被裁剪
+    assert "磁盘满" in rca_prompt           # summary 保留
+    print("  ✓ test_input_view_summary")
+
+
+async def test_input_view_full():
+    wf = _wf(
+        "input_view_full",
+        {
+            "logs": NodeDef(agent="log-analyst", params={"bug": "$.inputs.bug"}),
+            "rca": NodeDef(agent="root-cause", params={"logs": "$.nodes.logs.output"}, input_view="full"),
+        },
+        [EdgeDef(from_="logs", to="rca")],
+    )
+    responses = {
+        "log-analyst": {"summary": "磁盘满", "details": {"error_stack": "AAAA"}},
+        "root-cause": {"summary": "根因", "confidence": 0.9},
+    }
+    rt = FakeRuntime(responses)
+    ex = DAGExecutor(rt, concurrency=4)
+    await ex.run(wf, inputs={"bug": "x"})
+    rca_prompt = rt.prompts["root-cause"]
+    assert "error_stack" in rca_prompt  # full 视图：保留 details
+    print("  ✓ test_input_view_full")
+
+
 async def main() -> None:
     await test_basic_dag()
     await test_when_condition_skip_and_run()
@@ -197,6 +240,8 @@ async def main() -> None:
     await test_schema_error_retry()
     await test_non_json_output_fails_schema()
     await test_cost_budget()
+    await test_input_view_summary()
+    await test_input_view_full()
     print("\nALL M2 EXECUTOR TESTS PASS ✅")
 
 

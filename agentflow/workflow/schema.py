@@ -37,6 +37,7 @@ class NodeDef(BaseModel):
     on_schema_error: Literal["fail", "retry", "coerce"] = "fail"
     on_failure: Literal["abort", "continue"] = "abort"
     idempotency_key: str | None = None                # 有副作用节点幂等键
+    input_view: Literal["summary", "full"] = "summary"  # 输入裁剪：summary 去 details（默认）/ full 全量
 
     @model_validator(mode="before")
     @classmethod
