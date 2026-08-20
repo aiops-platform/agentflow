@@ -92,8 +92,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
     finally:
         asyncio.run(runtime.aclose())
         asyncio.run(event_bus.close())
-        if hasattr(store, "close"):
-            store.close()
+        asyncio.run(store.close())
 
     print(f"\nrun_id: {result.run_id}  status: {result.status}")
     for nid, nr in result.nodes.items():

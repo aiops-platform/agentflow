@@ -86,25 +86,25 @@ async def test_resume_skips_done_reruns_failed():
     print("  ✓ test_resume_skips_done_reruns_failed")
 
 
-def test_sqlite_roundtrip():
+async def test_sqlite_roundtrip():
     with tempfile.TemporaryDirectory() as d:
         store = SqliteStore(Path(d) / "state.db")
-        store.put_run("run1", {"run_id": "run1", "workflow": "w", "status": "success",
-                               "context": {"meta": {}, "nodes": {"a": {"status": "done", "output": {"x": 1}}}}})
-        store.put_node("run1", "a", {"status": "done", "output": {"x": 1}})
+        await store.put_run("run1", {"run_id": "run1", "workflow": "w", "status": "success",
+                                     "context": {"meta": {}, "nodes": {"a": {"status": "done", "output": {"x": 1}}}}})
+        await store.put_node("run1", "a", {"status": "done", "output": {"x": 1}})
 
-        assert store.get_run("run1")["status"] == "success"
-        assert store.get_node("run1", "a")["output"] == {"x": 1}
-        assert store.get_run("nope") is None
-        assert store.get_node("run1", "ghost") is None
-        store.close()
+        assert (await store.get_run("run1"))["status"] == "success"
+        assert (await store.get_node("run1", "a"))["output"] == {"x": 1}
+        assert await store.get_run("nope") is None
+        assert await store.get_node("run1", "ghost") is None
+        await store.close()
     print("  ✓ test_sqlite_roundtrip")
 
 
 async def main() -> None:
     test_registry_loads_all_agents()
     await test_resume_skips_done_reruns_failed()
-    test_sqlite_roundtrip()
+    await test_sqlite_roundtrip()
     print("\nALL M2 FINISH TESTS PASS ✅")
 
 

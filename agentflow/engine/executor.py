@@ -80,7 +80,7 @@ class DAGExecutor:
 
         # 断点续跑：从 store 恢复上下文
         if resume:
-            stored = self.store.get_run(run_id)
+            stored = await self.store.get_run(run_id)
             ctx = (WorkflowContext.from_snapshot(stored["context"]) if stored
                    else WorkflowContext(run_id, wf.name, inputs or {}))
         else:
@@ -154,7 +154,7 @@ class DAGExecutor:
                                                 "duration": (time.monotonic() - started_at) if started_at else None}))
                 # 节点级 checkpoint（断点续跑）
                 nstate = (ctx.data.get("nodes") or {}).get(node_id)
-                self.store.put_node(run_id, node_id, nstate or {"status": node_status[node_id]})
+                await self.store.put_node(run_id, node_id, nstate or {"status": node_status[node_id]})
                 node_done[node_id].set()
 
         tasks = [asyncio.create_task(run_node(n)) for n in wf.nodes if node_status[n] != "done"]
@@ -162,8 +162,8 @@ class DAGExecutor:
             await asyncio.gather(*tasks)
 
         run_status = "failed" if any(r.status == "failed" for r in results.values()) else "success"
-        self.store.put_run(run_id, {"run_id": run_id, "workflow": wf.name,
-                                    "status": run_status, "context": ctx.snapshot()})
+        await self.store.put_run(run_id, {"run_id": run_id, "workflow": wf.name,
+                                          "status": run_status, "context": ctx.snapshot()})
         await self._publish(Event(EventType.RUN_FINISHED, run_id, data={"status": run_status}))
 
         return RunResult(run_id=run_id, workflow=wf.name, status=run_status,

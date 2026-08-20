@@ -7,7 +7,7 @@ from pathlib import Path
 import agentflow.config as config
 import agentflow.server as server
 from agentflow.engine import DAGExecutor
-from agentflow.engine.state import InMemoryStore
+from agentflow.engine.state import InMemoryStore, PostgresStore, RedisStore
 from agentflow.opencode import NodeEvent, NodeEventType
 from fastapi.testclient import TestClient
 
@@ -65,11 +65,10 @@ def test_build_store_dual_mode():
     assert isinstance(config.build_store(), InMemoryStore)
 
     config.settings.state_backend = "postgres"
-    try:
-        config.build_store()
-        assert False, "postgres 应抛 NotImplementedError"
-    except NotImplementedError:
-        pass
+    assert isinstance(config.build_store(), PostgresStore)
+
+    config.settings.state_backend = "redis"
+    assert isinstance(config.build_store(), RedisStore)
 
     config.settings.state_backend = orig
     print("  ✓ test_build_store_dual_mode")

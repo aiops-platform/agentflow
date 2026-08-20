@@ -29,7 +29,8 @@ class Settings:
     state_dsn: str = os.environ.get(
         "AGENTFLOW_STATE_DSN", f"sqlite:///{WORKDIR / 'state.db'}"
     )
-    state_backend: str = os.environ.get("AGENTFLOW_STATE_BACKEND", "sqlite")  # sqlite | postgres | memory
+    state_backend: str = os.environ.get("AGENTFLOW_STATE_BACKEND", "sqlite")  # sqlite | postgres | redis | memory
+    redis_url: str = os.environ.get("AGENTFLOW_REDIS_URL", "redis://localhost:6379/0")
 
     # 沙箱 opensandbox（M3）：本地 podman / 生产 K8s 由环境切换
     sandbox_domain: str = os.environ.get("SANDBOX_DOMAIN", "127.0.0.1:8080")
@@ -50,13 +51,13 @@ settings = Settings()
 
 
 def build_store():
-    """按 state_backend 构建 StateStore：本地 sqlite / 生产 postgres（占位）/ memory。"""
-    from agentflow.engine.state import InMemoryStore, SqliteStore
+    """按 state_backend 构建 StateStore：sqlite / postgres / redis / memory。"""
+    from agentflow.engine.state import InMemoryStore, PostgresStore, RedisStore, SqliteStore
 
     if settings.state_backend == "memory":
         return InMemoryStore()
     if settings.state_backend == "postgres":
-        raise NotImplementedError(
-            "Postgres StateStore 需异步驱动（psycopg），生产部署时接入（M5 占位）"
-        )
+        return PostgresStore(settings.state_dsn)
+    if settings.state_backend == "redis":
+        return RedisStore(settings.redis_url)
     return SqliteStore(STATE_DB)
