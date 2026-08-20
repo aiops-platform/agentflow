@@ -116,7 +116,11 @@ def _cmd_list(args: argparse.Namespace) -> int:
 
 
 def _cmd_opencode_setup(args: argparse.Namespace) -> int:
-    result = run_setup(apply_mcp=args.apply, agents_dir=args.agents_dir, output_dir=args.output_dir)
+    try:
+        result = run_setup(apply_mcp=args.apply, agents_dir=args.agents_dir, output_dir=args.output_dir)
+    except RuntimeError as e:
+        print(f"❌ opencode 接线失败: {e}", file=sys.stderr)
+        return 1
     mode = "实际执行" if args.apply else "dry-run（未执行，仅打印）"
     print(f"opencode 接线（{mode}）:\n")
     print(f"生成 agent 文件（{len(result['agents'])} 个）:")

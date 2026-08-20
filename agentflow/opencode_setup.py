@@ -10,6 +10,7 @@
 """
 from __future__ import annotations
 
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -74,13 +75,26 @@ def build_agent_md(name: str, our_md: str) -> str:
 
 
 def register_mcp_servers(python: str | None = None) -> list[str]:
-    """注册所有 MCP server 到 opencode，返回执行的命令列表。"""
+    """注册所有 MCP server 到 opencode，返回执行的命令列表。
+
+    - opencode 不在 PATH 时抛 RuntimeError（带明确提示），而非裸 FileNotFoundError。
+    - 单个 server 注册失败（非零返回码）打印告警，不中断其余注册。
+    """
+    if shutil.which("opencode") is None:
+        raise RuntimeError(
+            "找不到 opencode 命令（不在 PATH 中）。请先安装 opencode 并确保可执行，例如：\n"
+            "  export PATH=\"$HOME/.nvm/versions/node/v24.19.0/bin:$PATH\"\n"
+            "（opencode 经 npm 安装，位于 nvm 的 bin 目录；安装见 spike/README.md）"
+        )
     py = python or sys.executable
     commands: list[str] = []
     for name, mod in MCP_SERVERS.items():
         commands.append(f"opencode mcp add {name} -- {py} -m {mod}")
-        subprocess.run(["opencode", "mcp", "add", name, "--", py, "-m", mod],
-                       check=False, capture_output=True)
+        r = subprocess.run(["opencode", "mcp", "add", name, "--", py, "-m", mod],
+                           check=False, capture_output=True, text=True)
+        if r.returncode != 0:
+            msg = (r.stderr or r.stdout or "").strip()
+            print(f"⚠️ 注册 MCP server '{name}' 失败: {msg}", file=sys.stderr)
     return commands
 
 
@@ -108,9 +122,10 @@ def run_setup(apply_mcp: bool, agents_dir: str | None = None,
     dst = Path(output_dir or Path.home() / ".config" / "opencode" / "agents")
     planned_agents = [str(dst / f"{d.name}.md") for d in sorted(src.iterdir())
                       if d.is_dir() and (d / "agent.md").exists()]
-    planned_mcp = [f"opencode mcp add {name} -- python -m {mod}" for name, mod in MCP_SERVERS.items()]
-
     if apply_mcp:
         generate_agents(src, dst)
-        register_mcp_servers()
-    return {"agents": planned_agents, "mcp_commands": planned_mcp, "applied": apply_mcp}
+        mcp_commands = register_mcp_servers()
+    else:
+        mcp_commands = [f"opencode mcp add {name} -- python -m {mod}"
+                        for name, mod in MCP_SERVERS.items()]
+    return {"agents": planned_agents, "mcp_commands": mcp_commands, "applied": apply_mcp}
