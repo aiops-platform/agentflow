@@ -12,7 +12,7 @@ from agentflow.opencode_setup import (MCP_SERVERS, build_agent_md, build_mcp_con
 def test_build_mcp_config():
     cfg = build_mcp_config(python="/usr/bin/python3")
     assert set(cfg) == set(MCP_SERVERS)
-    assert len(cfg) == 6
+    assert len(cfg) == 7
     assert cfg["es-logs"]["type"] == "local"
     assert cfg["es-logs"]["command"] == ["/usr/bin/python3", "-m", "agentflow.tools.es_logs"]
     print("  ✓ test_build_mcp_config")

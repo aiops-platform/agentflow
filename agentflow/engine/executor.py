@@ -214,7 +214,7 @@ class DAGExecutor:
             view = node.input_view or (spec.input_view if spec else "summary")
             if view == "summary":
                 params = self._crop_summary(node.params, params)
-            prompt = self._build_prompt(node.agent, params, spec)
+            prompt = self._build_prompt(node.agent, params, spec, run_id=run_id)
             try:
                 final_text, tokens, cost = await self._run_agent(node.agent, prompt, spec, run_id, node_id)
             except Exception as e:  # infra 失败 → retry
@@ -337,13 +337,19 @@ class DAGExecutor:
                 out[key] = val
         return out
 
-    def _build_prompt(self, agent: str, params: dict[str, Any], spec: AgentSpec | None) -> str:
+    def _build_prompt(self, agent: str, params: dict[str, Any], spec: AgentSpec | None,
+                      run_id: str | None = None) -> str:
         schema = spec.output_schema if spec else AGENT_OUTPUT_SCHEMAS.get(agent)
         system = spec.system_prompt if spec else ""
         parts: list[str] = []
         if system:
             parts.append(system)
         parts.append("输入（JSON）：\n" + json.dumps(params, ensure_ascii=False, indent=2))
+        if run_id:
+            parts.append(
+                f"当前 run_id: {run_id}。上游节点的 output 已按 summary 裁剪（details 未注入）；"
+                "若需要某上游节点的完整 details，调用工具 read_upstream_output(run_id, node_id, field) 按需拉取。"
+            )
         if schema is not None:
             parts.append("请严格以 JSON 对象输出，符合以下 JSON Schema：\n"
                          + json.dumps(schema.model_json_schema(), ensure_ascii=False))

@@ -74,11 +74,35 @@ def test_mock_datasource_new_tools():
     print("  ✓ test_mock_datasource_new_tools")
 
 
+async def test_read_upstream():
+    import sqlite3
+    import tempfile
+    from pathlib import Path
+    import agentflow.tools.read_upstream as ru
+
+    with tempfile.TemporaryDirectory() as d:
+        db = Path(d) / "state.db"
+        conn = sqlite3.connect(str(db))
+        conn.execute("CREATE TABLE nodes (run_id TEXT, node_id TEXT, state TEXT)")
+        conn.execute("INSERT INTO nodes VALUES (?, ?, ?)",
+                     ("r1", "a", json.dumps({"output": {"summary": "磁盘满", "details": {"error_stack": "AAAA"}}})))
+        conn.commit(); conn.close()
+        ru.STATE_DB = db  # 覆盖全局 STATE_DB 指向临时库
+
+        r = await ru.read_upstream_output("r1", "a")
+        assert r["status"] == "ok" and r["output"]["summary"] == "磁盘满"
+        r2 = await ru.read_upstream_output("r1", "a", "details.error_stack")
+        assert r2["value"] == "AAAA"
+        assert (await ru.read_upstream_output("r1", "ghost"))["status"] == "not_found"
+    print("  ✓ test_read_upstream")
+
+
 async def main() -> None:
     test_masking()
     await test_cmdb_and_topology()
     await test_k8s_readonly_and_mock()
     test_mock_datasource_new_tools()
+    await test_read_upstream()
     print("\nALL M3 TOOLS TESTS PASS ✅")
 
 

@@ -5,6 +5,7 @@ permission:
 tools:
   get_dependents: {}
   get_path: {}
+  read_upstream_output: {}
 ---
 # 你是 root-cause 根因定位 agent
 

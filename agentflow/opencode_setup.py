@@ -26,6 +26,7 @@ MCP_SERVERS: dict[str, str] = {
     "cmdb": "agentflow.tools.cmdb",
     "service-topology": "agentflow.tools.topology",
     "opensandbox": "agentflow.sandbox.mcp_server",
+    "read-upstream": "agentflow.tools.read_upstream",
 }
 
 # opencode 内置工具全集（permission 按此展开）
@@ -40,6 +41,7 @@ MCP_TOOLS: dict[str, list[str]] = {
     "cmdb": ["get_ci"],
     "service-topology": ["get_service", "get_dependencies", "get_dependents", "get_path"],
     "opensandbox": ["run_python", "run_shell", "read_file", "write_file"],
+    "read-upstream": ["read_upstream_output"],
 }
 ALL_MCP_TOOLS = sorted({t for tools in MCP_TOOLS.values() for t in tools})
 
