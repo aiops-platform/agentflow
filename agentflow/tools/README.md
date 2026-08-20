@@ -1,8 +1,8 @@
 # 数据源 MCP 工具层（agentflow/tools/）
 
 按 DESIGN.md §4.5 落地：统一以 **MCP server** 接入数据源，opencode 原生支持 MCP，每个 agent
-在 frontmatter 挂载自己的 MCP 工具集。本目录当前已实现两个数据源，其余（K8s / CMDB / 服务拓扑）随
-里程碑 M3 补齐。
+在 frontmatter 挂载自己的 MCP 工具集。5 个数据源 MCP server 均已实现（es-logs / prometheus-metrics /
+k8s / cmdb / service-topology），配套出站脱敏（masking）+ 统一 evidence 封装（common）。
 
 | 文件 | MCP server | 工具 | 消费 agent |
 |---|---|---|---|

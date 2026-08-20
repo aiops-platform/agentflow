@@ -152,6 +152,8 @@ tests/                      # 单测 + 集成测试（10 个文件）
 for t in tests/*.py; do PYTHONPATH=. python "$t"; done
 # 覆盖：adapter / executor / registry+resume / 数据源工具 / 沙箱 / 审批+观测 /
 #       server / statestore / opencode-setup / L2 集成（场景1/2）
+# 注：test_sandbox.py 额外需要 opensandbox SDK（可选依赖，未列入 pyproject）：
+#     pip install opensandbox opensandbox-code-interpreter
 ```
 
 ## 测试床（端到端验收）
