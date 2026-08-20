@@ -139,6 +139,9 @@ PYTHONPATH=. python tests/test_executor.py   # 单跑一个
 - `observability/`：`event_bus` 扇出 Langfuse / OTel sink + `console.py`（`ConsoleSink`，CLI 实时打印每节点 prompt/output）。
 - `opencode_setup.py`：注册 MCP + 生成 opencode agent；`MCP_SERVERS` / `MCP_TOOLS` / `OPENCODE_TOOLS` 三张映射表在此。
 - 顶层 `agents/`（仓库根，非包）＝15 个职能 agent 定义；`examples/`＝场景 workflow YAML。
+- `server.py`：REST API——workflow CRUD（`/workflows`，SQLite workflows 表存 YAML）+ run 异步触发（`POST /run` → 后台 task，返回 run_id）+ 查询（`GET /runs/:id` 聚合 nodes 表节点级 checkpoint）+ 停止（`POST /runs/:id/stop` 落 cancelled）。
+
+**前端**（独立 repo [github.com/xqfgbc/agentflow-ui](https://github.com/xqfgbc/agentflow-ui)，Vue3 + Vite + VueFlow，**不在本仓库**）：流程配置页（YAML→节点图→保存/复用）+ Bug 解决页（流程图实时三态 + 节点 prompt/output/token 格式化 + 总 token）。dev 代理 `/workflows /run /runs /health` 到后端 8000；nginx 容器代理到 `agentflow:8000`。K8s 前后端同在 `aiops` namespace。
 
 ### 必须理解的几个核心机制
 
