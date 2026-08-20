@@ -20,6 +20,7 @@ from agentflow.engine import DAGExecutor
 from agentflow.engine.approval import ApprovalManager
 from agentflow.observability import EventBus, LlmTraceSink, MetricsSink
 from agentflow.opencode import OpenCodeAdapter
+from agentflow.opencode_setup import run_setup
 from agentflow.workflow.dag import validate
 from agentflow.workflow.parser import WorkflowParseError, parse
 
@@ -114,6 +115,19 @@ def _cmd_list(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_opencode_setup(args: argparse.Namespace) -> int:
+    result = run_setup(apply_mcp=args.apply, agents_dir=args.agents_dir, output_dir=args.output_dir)
+    mode = "实际执行" if args.apply else "dry-run（未执行，仅打印）"
+    print(f"opencode 接线（{mode}）:\n")
+    print(f"生成 agent 文件（{len(result['agents'])} 个）:")
+    for p in result["agents"]:
+        print(f"  - {p}")
+    print("\nMCP server 注册命令:")
+    for c in result["mcp_commands"]:
+        print(f"  {c}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="agentflow", description="AIOps Bug Fix 工作流平台")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -128,6 +142,11 @@ def main(argv: list[str] | None = None) -> int:
 
     sub.add_parser("list", help="列出可插拔 agent")
 
+    p_setup = sub.add_parser("opencode-setup", help="接线到 opencode（注册 MCP + 生成 agent）")
+    p_setup.add_argument("--apply", action="store_true", help="实际注册 MCP server（默认 dry-run）")
+    p_setup.add_argument("--agents-dir", help="agent.md 目录（默认 agents/）")
+    p_setup.add_argument("--output-dir", help="opencode agents 输出目录（默认 ~/.config/opencode/agents）")
+
     args = parser.parse_args(argv)
     if args.command == "validate":
         return _cmd_validate(args)
@@ -135,6 +154,8 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_run(args)
     if args.command == "list":
         return _cmd_list(args)
+    if args.command == "opencode-setup":
+        return _cmd_opencode_setup(args)
     return 0
 
 
