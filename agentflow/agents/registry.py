@@ -34,6 +34,8 @@ class AgentRegistry:
         if isinstance(tools, dict):
             tools = list(tools.keys())
 
+        spec_fields = self._load_spec_py(d)
+
         return AgentSpec(
             name=d.name,
             description=fm.get("description") or "",
@@ -42,7 +44,19 @@ class AgentRegistry:
             tools=tools,
             model=fm.get("model"),
             permissions=fm.get("permission") or fm.get("permissions") or {},
+            input_view=spec_fields.get("input_view", "summary"),
+            requires_sandbox=spec_fields.get("requires_sandbox", False),
         )
+
+    @staticmethod
+    def _load_spec_py(d: Path) -> dict[str, Any]:
+        """加载可选 spec.py（顶层简单赋值：input_view / requires_sandbox 等）。"""
+        spec_file = d / "spec.py"
+        if not spec_file.exists():
+            return {}
+        ns: dict[str, Any] = {}
+        exec(spec_file.read_text(encoding="utf-8"), ns)
+        return {k: v for k, v in ns.items() if not k.startswith("_")}
 
     def get(self, name: str) -> AgentSpec | None:
         return self._specs.get(name)

@@ -211,7 +211,8 @@ class DAGExecutor:
         for attempt in range(max_retry + 1):
             paths.ensure_node(node_id, attempt)
             params = ctx.resolve_params(node.params)
-            if node.input_view == "summary":
+            view = node.input_view or (spec.input_view if spec else "summary")
+            if view == "summary":
                 params = self._crop_summary(node.params, params)
             prompt = self._build_prompt(node.agent, params, spec)
             try:

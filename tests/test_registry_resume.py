@@ -27,6 +27,11 @@ def test_registry_loads_all_agents():
     assert "query_logs" in reg.get("log-analyst").tools
     assert "query_metrics" in reg.get("metrics-analyst").tools
     assert "root-cause" in reg
+    # spec.py 可选声明：input_view + requires_sandbox
+    assert reg.get("fix-implementer").input_view == "full"
+    assert reg.get("fix-implementer").requires_sandbox is True
+    assert reg.get("tester").requires_sandbox is True
+    assert reg.get("triage").input_view == "summary"  # 无 spec.py，默认 summary
     print("  ✓ test_registry_loads_all_agents")
 
 

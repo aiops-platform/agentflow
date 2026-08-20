@@ -23,6 +23,8 @@ class AgentSpec:
     tools: list[str] = field(default_factory=list)  # frontmatter tools 挂载的 MCP 工具名
     model: str | None = None
     permissions: dict[str, Any] = field(default_factory=dict)
+    input_view: str = "summary"                       # 输入裁剪默认（spec.py 可覆盖；节点级 input_view 优先）
+    requires_sandbox: bool = False                    # 是否需要沙箱（tester / fix-implementer 为 True）
 
 
 _FM_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n?(.*)$", re.DOTALL)
