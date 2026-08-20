@@ -91,6 +91,26 @@ async def test_resume_skips_done_reruns_failed():
     print("  ✓ test_resume_skips_done_reruns_failed")
 
 
+async def test_resume_extra_input_and_invalidate():
+    store = InMemoryStore()
+    out = {"summary": "x"}
+    rt1 = FakeRuntime({"triage": out, "log-analyst": out, "root-cause": out})
+    r1 = await DAGExecutor(rt1, store=store).run(_wf(), inputs={"bug": "v1"}, run_id="run2")
+    assert r1.ok
+
+    # resume + 补料 + 作废 b 及其下游（c）
+    rt2 = FakeRuntime({"triage": out, "log-analyst": out, "root-cause": out})
+    r2 = await DAGExecutor(rt2, store=store).run(
+        _wf(), run_id="run2", resume=True,
+        extra_inputs={"bug": "v2"}, invalidate_from="b",
+    )
+    assert "triage" not in rt2.calls            # a done 保留，不重跑
+    assert rt2.calls == ["log-analyst", "root-cause"]  # b/c 作废重跑
+    assert r2.context["inputs"]["bug"] == "v2"   # 补料生效
+    assert r2.ok
+    print("  ✓ test_resume_extra_input_and_invalidate")
+
+
 async def test_sqlite_roundtrip():
     with tempfile.TemporaryDirectory() as d:
         store = SqliteStore(Path(d) / "state.db")
@@ -109,6 +129,7 @@ async def test_sqlite_roundtrip():
 async def main() -> None:
     test_registry_loads_all_agents()
     await test_resume_skips_done_reruns_failed()
+    await test_resume_extra_input_and_invalidate()
     await test_sqlite_roundtrip()
     print("\nALL M2 FINISH TESTS PASS ✅")
 

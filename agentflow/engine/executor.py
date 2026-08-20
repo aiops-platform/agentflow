@@ -80,6 +80,8 @@ class DAGExecutor:
         inputs: dict[str, Any] | None = None,
         run_id: str | None = None,
         resume: bool = False,
+        extra_inputs: dict[str, Any] | None = None,
+        invalidate_from: str | None = None,
     ) -> RunResult:
         run_id = run_id or f"run_{uuid.uuid4().hex[:12]}"
 
@@ -108,7 +110,14 @@ class DAGExecutor:
 
         # 恢复：已 done 节点幂等跳过（复用缓存 output）
         if resume:
+            # 补料：新 input 合并进全局 inputs（只作用于重跑的 failed/pending 节点）
+            if extra_inputs:
+                ctx.data.setdefault("inputs", {}).update(extra_inputs)
+            # 作废：invalidate_from 及其下游作废重跑（不恢复 done）
+            invalidated = self._downstream(wf, invalidate_from) if invalidate_from else set()
             for n in wf.nodes:
+                if n in invalidated:
+                    continue
                 nstate = (ctx.data.get("nodes") or {}).get(n)
                 if nstate and nstate.get("status") == "done":
                     node_status[n] = "done"
@@ -168,6 +177,13 @@ class DAGExecutor:
                 if (self.max_cost and self._total_cost >= self.max_cost) or \
                    (self.max_tokens and self._total_tokens >= self.max_tokens):
                     abort.set()
+                # 暂停检查：pause 命令设置了 paused 标志则停止（后续节点 cancelled）
+                try:
+                    stored = await self.store.get_run(run_id)
+                    if stored and (stored.get("context") or {}).get("meta", {}).get("paused"):
+                        abort.set()
+                except Exception:  # noqa: BLE001 —— 暂停检查失败不影响主流程
+                    pass
 
         tasks = [asyncio.create_task(run_node(n)) for n in wf.nodes if node_status[n] != "done"]
         if tasks:
@@ -180,6 +196,22 @@ class DAGExecutor:
 
         return RunResult(run_id=run_id, workflow=wf.name, status=run_status,
                          nodes=dict(results), context=ctx.snapshot())
+
+    @staticmethod
+    def _downstream(wf: WorkflowDef, node_id: str) -> set[str]:
+        """返回 node_id 及其所有下游节点集合（作废重跑用）。"""
+        adj: dict[str, list[str]] = {}
+        for u, v in build_edges(wf):
+            adj.setdefault(u, []).append(v)
+        seen: set[str] = set()
+        queue = [node_id]
+        while queue:
+            u = queue.pop()
+            if u in seen:
+                continue
+            seen.add(u)
+            queue.extend(adj.get(u, []))
+        return seen
 
     async def _publish(self, event: Event) -> None:
         if self.event_bus is not None:

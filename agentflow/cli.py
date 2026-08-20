@@ -74,6 +74,9 @@ def _cmd_run(args: argparse.Namespace) -> int:
     inputs: dict = {}
     if args.trigger:
         inputs = json.loads(Path(args.trigger).read_text(encoding="utf-8"))
+    extra_inputs: dict = {}
+    if getattr(args, "input", None):
+        extra_inputs = json.loads(args.input)
 
     registry = AgentRegistry(AGENTS_DIR).load()
     store = build_store()
@@ -92,7 +95,9 @@ def _cmd_run(args: argparse.Namespace) -> int:
                                max_cost=settings.max_cost, max_tokens=settings.max_tokens)
         try:
             return await executor.run(wf, inputs=inputs,
-                                      run_id=args.resume, resume=bool(args.resume))
+                                      run_id=args.resume, resume=bool(args.resume),
+                                      extra_inputs=extra_inputs or None,
+                                      invalidate_from=getattr(args, "invalidate_from", None))
         finally:
             await runtime.aclose()
             await event_bus.close()
@@ -165,6 +170,31 @@ def _cmd_inspect(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_pause(args: argparse.Namespace) -> int:
+    """优雅停止：设置 run 的 paused 标志，executor 在当前节点跑完后停止。"""
+    store = build_store()
+
+    async def _pause():
+        try:
+            run = await store.get_run(args.run_id)
+            if run is None:
+                return None
+            ctx = run.get("context") or {}
+            ctx.setdefault("meta", {})["paused"] = True
+            run["context"] = ctx
+            await store.put_run(args.run_id, run)
+            return run
+        finally:
+            await store.close()
+
+    run = asyncio.run(_pause())
+    if run is None:
+        print(f"❌ run {args.run_id} 不存在（查 {WORKDIR}/state.db）", file=sys.stderr)
+        return 1
+    print(f"⏸️ 已设置 run {args.run_id} 暂停标志：当前节点跑完即停，已 done 节点保留（resume 续跑）")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="agentflow", description="AIOps Bug Fix 工作流平台")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -176,6 +206,8 @@ def main(argv: list[str] | None = None) -> int:
     p_run.add_argument("workflow", help="workflow YAML 路径")
     p_run.add_argument("--trigger", help="触发入参 JSON（ticket 等）")
     p_run.add_argument("--resume", help="断点续跑：从该 run_id 恢复（跳过 done，重跑 failed）")
+    p_run.add_argument("--input", help="resume 时补料（JSON 字符串，合并进 $.inputs，只作用于重跑节点）")
+    p_run.add_argument("--invalidate-from", help="resume 时作废该节点及其下游重跑")
 
     sub.add_parser("list", help="列出可插拔 agent")
 
@@ -186,6 +218,9 @@ def main(argv: list[str] | None = None) -> int:
 
     p_inspect = sub.add_parser("inspect", help="查看某次 run 各节点的输入 prompt + 输出")
     p_inspect.add_argument("run_id", help="run ID")
+
+    p_pause = sub.add_parser("pause", help="优雅停止某次 run（当前节点跑完即停，resume 可续跑）")
+    p_pause.add_argument("run_id", help="run ID")
 
     args = parser.parse_args(argv)
     if args.command == "validate":
@@ -198,6 +233,8 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_opencode_setup(args)
     if args.command == "inspect":
         return _cmd_inspect(args)
+    if args.command == "pause":
+        return _cmd_pause(args)
     return 0
 
 
