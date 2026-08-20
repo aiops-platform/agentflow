@@ -210,7 +210,7 @@ async def run(req: RunRequest) -> dict:
 
 @app.post("/runs/{run_id}/stop")
 async def stop_run(run_id: str) -> dict:
-    """停止进行中的 run：设置 paused 标志 + 取消后台任务。"""
+    """停止进行中的 run：设置 paused 标志 + 标记 cancelled（executor 当前节点跑完即停）。"""
     store = build_store()
     try:
         run = await store.get_run(run_id)
@@ -219,12 +219,10 @@ async def stop_run(run_id: str) -> dict:
         ctx = run.get("context") or {}
         ctx.setdefault("meta", {})["paused"] = True
         run["context"] = ctx
+        run["status"] = "cancelled"
         await store.put_run(run_id, run)
     finally:
         await store.close()
-    task = _run_tasks.pop(run_id, None)
-    if task and not task.done():
-        task.cancel()
     return {"ok": True, "run_id": run_id}
 
 
