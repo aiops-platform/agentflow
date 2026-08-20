@@ -61,7 +61,7 @@ DESIGN.md 是「目标架构」而非「当前实现快照」，不少章节描�
 补充两个「半接线」点（也是 DESIGN 描述了但没完全打通）：
 
 - **观测实际能用的路径** = StateStore 记录每节点 `prompt`/`output` + `inspect` 命令（本地回看）+ `ConsoleSink`（CLI 实时打印每节点 prompt/output）。远程 Langfuse/OTel 仍是半成品（两个 sink 都不真推送）。
-- **审批**：`ApprovalManager` 逻辑完整（approve/reject 两态、按 node 并发、超时 auto-deny），但 `server.py` 只有 `POST /run` + `GET /health`，**无 approve/reject 端点**——manual 模式的 `decide()` 只能进程内调用。
+- **审批**：`ApprovalManager` 逻辑完整（approve/reject 两态、按 node 并发、超时 auto-deny），但 `server.py` 只有 `POST /run` + `GET /health`，**无 approve/reject 端点**——manual 模式的 `decide()` 只能进程内调用。另：opencode 侧的 `permission.asked`（`external_directory` 等工具级权限）已由 `server_adapter` 自动 `reply=once`，不再卡住 fix/tester 这类写操作 agent。
 
 milestone M0–M5 在 README 标 ✅，指的是「该里程碑的主干已通」，不等于 DESIGN 里每个细节都落地了。此外 `tools/README.md` 里「当前只实现两个数据源」已过时——5 个数据源 MCP（es-logs/prometheus-metrics/k8s/cmdb/topology）实际都已实现。
 
@@ -160,3 +160,5 @@ PYTHONPATH=. python tests/test_executor.py   # 单跑一个
 ## 配置（环境变量）
 
 全部经 `config.py` 的 `Settings` 收敛（凭据不进代码/YAML）。常用：`OPENCODE_URL`（默认 `http://127.0.0.1:4090`）、`AGENTFLOW_WORKDIR`（默认 `./workdir`，含 `state.db`，已被 gitignore）、`AGENTFLOW_STATE_BACKEND`/`AGENTFLOW_STATE_DSN`/`AGENTFLOW_REDIS_URL`、`AGENTFLOW_APPROVAL_MODE`（`auto`/`manual`）、`SANDBOX_*`、`LANGFUSE_*`。opencode 的模型/key 在 opencode 侧：默认模型在 `~/.config/opencode/opencode.json` 的 `model` 字段（当前 `deepseek/deepseek-v4-flash`），API key 放项目根 `.env`（`DEEPSEEK_API_KEY`，已 gitignore；opencode 不自动读 .env，启动 serve 时需 `set -a; source .env; set +a`）。
+
+**沙箱（opensandbox）两个坑**：① `Sandbox.create` 的 `entrypoint` 必须是 **list**（`["/opt/opensandbox/code-interpreter.sh"]`），不是字符串——否则 `POST /v1/sandboxes` 返回 422（沙箱创建失败，agent 会静默降级宿主机）。② 沙箱链路需 opensandbox-server 跑在 `127.0.0.1:8080`（`OPENSANDBOX_INSECURE_SERVER=YES opensandbox-server --config spike/sandbox.toml`），否则 MCP 工具 `run_python`/`run_shell` 不可达。
