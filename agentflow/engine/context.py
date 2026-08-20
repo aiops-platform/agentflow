@@ -40,6 +40,17 @@ class WorkflowContext:
             "nodes": {},
         }
 
+    @classmethod
+    def from_snapshot(cls, snapshot: dict[str, Any]) -> "WorkflowContext":
+        """从落盘快照恢复（断点续跑用）。"""
+        ctx = cls(
+            (snapshot.get("meta") or {}).get("run_id", ""),
+            (snapshot.get("meta") or {}).get("workflow", ""),
+            snapshot.get("inputs") or {},
+        )
+        ctx.data = snapshot
+        return ctx
+
     def get(self, ref: str) -> Any:
         """取 JSONPath 引用值；缺失返回 None。"""
         v = _resolve(self.data, ref)

@@ -4,6 +4,7 @@
 - 条件边 ``when``：求值 False → 节点 skipped（并向下游传播）。
 - 失败分类：infra 失败（runtime 异常/ERROR 事件）走 retry；logic 失败（schema 校验不过）走 on_failure。
 - 输出提取：agent 最终文本 → JSON（按 agent 的 output schema 校验）→ 落 WorkflowContext。
+- 断点续跑：节点级 checkpoint；resume 时已 done 节点幂等跳过，只重跑 failed/pending。
 """
 from __future__ import annotations
 
@@ -16,6 +17,8 @@ from typing import Any
 
 from pydantic import ValidationError
 
+from agentflow.agents import AgentRegistry
+from agentflow.agents.base import AgentSpec
 from agentflow.domain import AGENT_OUTPUT_SCHEMAS
 from agentflow.engine.artifact import ArtifactPaths
 from agentflow.engine.context import WorkflowContext, eval_when
@@ -51,19 +54,30 @@ class RunResult:
 
 
 class DAGExecutor:
-    def __init__(self, runtime: AgentRuntime, *, store: StateStore | None = None, concurrency: int = 4):
+    def __init__(self, runtime: AgentRuntime, *, store: StateStore | None = None,
+                 concurrency: int = 4, registry: AgentRegistry | None = None):
         self.runtime = runtime
         self.store = store or InMemoryStore()
         self.concurrency = concurrency
+        self.registry = registry
 
     async def run(
         self,
         wf: WorkflowDef,
         inputs: dict[str, Any] | None = None,
         run_id: str | None = None,
+        resume: bool = False,
     ) -> RunResult:
         run_id = run_id or f"run_{uuid.uuid4().hex[:12]}"
-        ctx = WorkflowContext(run_id, wf.name, inputs or {})
+
+        # 断点续跑：从 store 恢复上下文
+        if resume:
+            stored = self.store.get_run(run_id)
+            ctx = (WorkflowContext.from_snapshot(stored["context"]) if stored
+                   else WorkflowContext(run_id, wf.name, inputs or {}))
+        else:
+            ctx = WorkflowContext(run_id, wf.name, inputs or {})
+
         paths = ArtifactPaths(run_id)
 
         upstreams: dict[str, list[str]] = {n: [] for n in wf.nodes}
@@ -76,6 +90,17 @@ class DAGExecutor:
         results: dict[str, NodeResult] = {}
         sem = asyncio.Semaphore(self.concurrency)
         abort = asyncio.Event()
+
+        # 恢复：已 done 节点幂等跳过（复用缓存 output）
+        if resume:
+            for n in wf.nodes:
+                nstate = (ctx.data.get("nodes") or {}).get(n)
+                if nstate and nstate.get("status") == "done":
+                    node_status[n] = "done"
+                    node_done[n].set()
+                    results[n] = NodeResult(n, "done", output=nstate.get("output"),
+                                            stdout=nstate.get("stdout", ""),
+                                            attempts=nstate.get("attempts", 1))
 
         async def run_node(node_id: str) -> None:
             try:
@@ -107,9 +132,14 @@ class DAGExecutor:
                 ctx.mark_failed(node_id, str(e))
                 abort.set()
             finally:
+                # 节点级 checkpoint（断点续跑）
+                nstate = (ctx.data.get("nodes") or {}).get(node_id)
+                self.store.put_node(run_id, node_id, nstate or {"status": node_status[node_id]})
                 node_done[node_id].set()
 
-        await asyncio.gather(*(asyncio.create_task(run_node(n)) for n in wf.nodes))
+        tasks = [asyncio.create_task(run_node(n)) for n in wf.nodes if node_status[n] != "done"]
+        if tasks:
+            await asyncio.gather(*tasks)
 
         run_status = "failed" if any(r.status == "failed" for r in results.values()) else "success"
         self.store.put_run(run_id, {"run_id": run_id, "workflow": wf.name,
@@ -122,10 +152,8 @@ class DAGExecutor:
 
     def _should_skip(self, wf: WorkflowDef, node_id: str, upstreams: list[str],
                      node_status: dict[str, str], ctx: WorkflowContext) -> bool:
-        # 上游 skipped → 本节点 skipped（分支整体失效）
         if any(node_status[u] == "skipped" for u in upstreams):
             return True
-        # when 条件边：入边条件为 False → 本节点 skipped
         for e in wf.edges:
             if e.to == node_id and e.when and node_status.get(e.from_) == "done":
                 if not eval_when(e.when, ctx):
@@ -134,22 +162,26 @@ class DAGExecutor:
 
     # ── 单节点执行 ──
 
+    def _spec(self, agent: str) -> AgentSpec | None:
+        return self.registry.get(agent) if self.registry else None
+
     async def _execute_node(self, node_id: str, node: NodeDef,
                             ctx: WorkflowContext, paths: ArtifactPaths) -> NodeResult:
         max_retry = node.retry.max if node.retry else 0
         last_err: str | None = None
+        spec = self._spec(node.agent)
 
         for attempt in range(max_retry + 1):
             paths.ensure_node(node_id, attempt)
             params = ctx.resolve_params(node.params)
-            prompt = self._build_prompt(node.agent, params)
+            prompt = self._build_prompt(node.agent, params, spec)
             try:
-                final_text, tokens, cost = await self._run_agent(node.agent, prompt)
+                final_text, tokens, cost = await self._run_agent(node.agent, prompt, spec)
             except Exception as e:  # infra 失败 → retry
                 last_err = f"{type(e).__name__}: {e}"
                 continue
 
-            output, schema_err = self._extract_output(node.agent, final_text)
+            output, schema_err = self._extract_output(node.agent, final_text, spec)
             if schema_err is not None:
                 if node.on_schema_error == "coerce":
                     output = {"summary": final_text}
@@ -169,11 +201,12 @@ class DAGExecutor:
         ctx.mark_failed(node_id, last_err or "unknown error")
         return NodeResult(node_id, "failed", error=last_err, attempts=max_retry + 1)
 
-    async def _run_agent(self, agent: str, prompt: str) -> tuple[str, int, float]:
+    async def _run_agent(self, agent: str, prompt: str, spec: AgentSpec | None) -> tuple[str, int, float]:
         texts: list[str] = []
         tokens = 0
         cost = 0.0
-        async for ev in self.runtime.run_node(agent, prompt):
+        tools = spec.tools if spec else None
+        async for ev in self.runtime.run_node(agent, prompt, tools=tools):
             if ev.type is NodeEventType.ERROR:
                 raise RuntimeError(ev.error or "agent runtime error")
             if ev.type is NodeEventType.TEXT and ev.text:
@@ -187,20 +220,20 @@ class DAGExecutor:
 
     # ── 输出提取 ──
 
-    def _extract_output(self, agent: str, final_text: str) -> tuple[Any, str | None]:
-        schema = AGENT_OUTPUT_SCHEMAS.get(agent)
+    def _extract_output(self, agent: str, final_text: str,
+                        spec: AgentSpec | None) -> tuple[Any, str | None]:
+        schema = spec.output_schema if spec else AGENT_OUTPUT_SCHEMAS.get(agent)
         data = self._parse_json(final_text)
         if data is None:
-            # 模型没返回合法 JSON：声明了 schema 的 agent 视为校验失败（DESIGN §4.10.4）
             if schema is not None:
                 return None, "模型输出不是合法 JSON，无法校验 output schema"
-            return {"summary": final_text}, None    # 未声明 schema → 非结构化降级
+            return {"summary": final_text}, None
         if schema is not None:
             try:
                 return schema.model_validate(data).model_dump(), None
             except ValidationError as e:
                 return None, f"output schema 校验失败: {e}"
-        return data, None                           # 无 schema → 接受原始 JSON
+        return data, None
 
     @staticmethod
     def _parse_json(text: str) -> Any | None:
@@ -219,12 +252,14 @@ class DAGExecutor:
                 pass
         return None
 
-    def _build_prompt(self, agent: str, params: dict[str, Any]) -> str:
-        schema = AGENT_OUTPUT_SCHEMAS.get(agent)
-        hint = ""
+    def _build_prompt(self, agent: str, params: dict[str, Any], spec: AgentSpec | None) -> str:
+        schema = spec.output_schema if spec else AGENT_OUTPUT_SCHEMAS.get(agent)
+        system = spec.system_prompt if spec else ""
+        parts: list[str] = []
+        if system:
+            parts.append(system)
+        parts.append("输入（JSON）：\n" + json.dumps(params, ensure_ascii=False, indent=2))
         if schema is not None:
-            hint = (
-                "\n请严格以 JSON 对象输出，符合以下 JSON Schema：\n"
-                + json.dumps(schema.model_json_schema(), ensure_ascii=False)
-            )
-        return f"你是 {agent} 职能 agent。输入：\n{json.dumps(params, ensure_ascii=False, indent=2)}{hint}"
+            parts.append("请严格以 JSON 对象输出，符合以下 JSON Schema：\n"
+                         + json.dumps(schema.model_json_schema(), ensure_ascii=False))
+        return "\n\n".join(parts)

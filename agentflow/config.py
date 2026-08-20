@@ -11,6 +11,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent        # my-agent-cc 根目录
 EXAMPLES_DIR = ROOT / "examples"
+AGENTS_DIR = ROOT / "agents"
 WORKDIR = Path(os.environ.get("AGENTFLOW_WORKDIR", str(ROOT / "workdir")))
 
 
