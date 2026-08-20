@@ -15,7 +15,7 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from agentflow.agents import AgentRegistry
-from agentflow.config import AGENTS_DIR, build_store, settings
+from agentflow.config import AGENTS_DIR, WORKDIR, build_store, settings
 from agentflow.engine import DAGExecutor
 from agentflow.engine.approval import ApprovalManager
 from agentflow.observability import EventBus, LlmTraceSink, MetricsSink
@@ -128,6 +128,34 @@ def _cmd_opencode_setup(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_inspect(args: argparse.Namespace) -> int:
+    store = build_store()
+
+    async def _load():
+        try:
+            return await store.get_run(args.run_id)
+        finally:
+            await store.close()
+
+    run = asyncio.run(_load())
+    if run is None:
+        print(f"❌ run {args.run_id} 不存在（查 {WORKDIR}/state.db）")
+        return 1
+
+    print(f"run: {args.run_id}  workflow: {run.get('workflow')}  status: {run.get('status')}")
+    nodes = (run.get("context") or {}).get("nodes", {})
+    for nid, nstate in nodes.items():
+        print(f"\n{'=' * 70}\n### {nid}  [{nstate.get('status')}]")
+        print("--- 输入 prompt ---")
+        print(nstate.get("prompt") or "(未记录)")
+        print("--- 结构化输出 output ---")
+        print(json.dumps(nstate.get("output"), ensure_ascii=False, indent=2))
+        if nstate.get("stdout"):
+            print("--- 原始输出 stdout ---")
+            print(nstate["stdout"])
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="agentflow", description="AIOps Bug Fix 工作流平台")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -147,6 +175,9 @@ def main(argv: list[str] | None = None) -> int:
     p_setup.add_argument("--agents-dir", help="agent.md 目录（默认 agents/）")
     p_setup.add_argument("--output-dir", help="opencode agents 输出目录（默认 ~/.config/opencode/agents）")
 
+    p_inspect = sub.add_parser("inspect", help="查看某次 run 各节点的输入 prompt + 输出")
+    p_inspect.add_argument("run_id", help="run ID")
+
     args = parser.parse_args(argv)
     if args.command == "validate":
         return _cmd_validate(args)
@@ -156,6 +187,8 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_list(args)
     if args.command == "opencode-setup":
         return _cmd_opencode_setup(args)
+    if args.command == "inspect":
+        return _cmd_inspect(args)
     return 0
 
 

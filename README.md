@@ -81,6 +81,7 @@ curl -X POST localhost:8000/run -H 'Content-Type: application/json' \
 | `agentflow validate <wf.yaml>` | 静态校验（环 / 悬空节点 / JSONPath 合法性 + 拓扑序） |
 | `agentflow run <wf.yaml> [--trigger bug.json] [--resume run_id]` | 运行 workflow |
 | `agentflow list` | 列出可插拔 agent |
+| `agentflow inspect <run_id>` | 查看某次 run 各节点的输入 prompt + 结构化输出 + 原始 stdout |
 | `agentflow opencode-setup [--apply]` | 接线到 opencode（注册 MCP + 生成 agent） |
 
 ## 配置（环境变量）

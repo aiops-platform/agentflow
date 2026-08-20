@@ -207,7 +207,7 @@ class DAGExecutor:
                 continue
 
             await self._publish(Event(EventType.GENERATION, run_id, node_id,
-                                      data={"agent": node.agent, "output": final_text,
+                                      data={"agent": node.agent, "prompt": prompt, "output": final_text,
                                             "tokens": {"total": tokens}, "cost": cost}))
 
             output, schema_err = self._extract_output(node.agent, final_text, spec)
@@ -218,7 +218,7 @@ class DAGExecutor:
                     last_err = schema_err
                     continue
                 else:  # fail（默认）
-                    ctx.mark_failed(node_id, schema_err, stdout=final_text)
+                    ctx.mark_failed(node_id, schema_err, stdout=final_text, prompt=prompt)
                     return NodeResult(node_id, "failed", error=schema_err,
                                       stdout=final_text, attempts=attempt + 1)
 
@@ -228,12 +228,12 @@ class DAGExecutor:
                 await self._publish(Event(EventType.APPROVAL_DECIDED, run_id, node_id,
                                           data={"trigger": node.approve, "approved": approved}))
                 if not approved:
-                    ctx.mark_failed(node_id, "approval_rejected", stdout=final_text)
+                    ctx.mark_failed(node_id, "approval_rejected", stdout=final_text, prompt=prompt)
                     return NodeResult(node_id, "failed", error="approval_rejected",
                                       stdout=final_text, attempts=attempt + 1)
 
             ctx.set_node(node_id, status="done", output=output,
-                         stdout=final_text, attempts=attempt + 1)
+                         stdout=final_text, attempts=attempt + 1, prompt=prompt)
             return NodeResult(node_id, "done", output=output, stdout=final_text,
                               tokens=tokens, cost=cost, attempts=attempt + 1)
 

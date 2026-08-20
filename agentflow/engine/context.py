@@ -60,19 +60,21 @@ class WorkflowContext:
         return _resolve(self.data, ref) is not _MISSING
 
     def set_node(self, node_id: str, *, status: str, output: Any = None,
-                 stdout: str = "", attempts: int = 0) -> None:
+                 stdout: str = "", attempts: int = 0, prompt: str | None = None) -> None:
         self.data["nodes"][node_id] = {
             "status": status,
             "output": output,
             "stdout": stdout,
             "attempts": attempts,
+            "prompt": prompt,
         }
 
-    def mark_failed(self, node_id: str, reason: str, stdout: str = "") -> None:
+    def mark_failed(self, node_id: str, reason: str, stdout: str = "",
+                    prompt: str | None = None) -> None:
         """失败节点写固定 fallback 结构（DESIGN.md §4.10.5）。"""
         self.set_node(
             node_id, status="failed",
-            output=FailedOutput(error_reason=reason).model_dump(), stdout=stdout,
+            output=FailedOutput(error_reason=reason).model_dump(), stdout=stdout, prompt=prompt,
         )
 
     def resolve_params(self, params: dict[str, str]) -> dict[str, Any]:
