@@ -26,23 +26,32 @@
       </template>
     </aside>
 
-    <div class="canvas">
-      <VueFlow :nodes="nodes" :edges="edges" :default-viewport="{ zoom: 0.8 }" fit-view-on-init @node-click="onNodeClick">
-        <Background />
-        <Controls />
-      </VueFlow>
+    <div class="right">
+      <div class="flow">
+        <VueFlow :nodes="nodes" :edges="edges" :default-viewport="{ zoom: 0.7 }" fit-view-on-init @node-click="onNodeClick">
+          <Background />
+          <Controls />
+        </VueFlow>
+      </div>
 
-      <div v-if="selected" class="detail">
-        <h3>{{ selected.id }} <span class="status" :class="selected.status">{{ selected.status }}</span></h3>
-        <div class="meta">tokens: {{ selected.tokens }} · cost: {{ selected.cost }}</div>
-        <details open>
-          <summary>输入 prompt</summary>
-          <pre>{{ selected.prompt || '(无)' }}</pre>
-        </details>
-        <details>
-          <summary>输出 output</summary>
-          <pre>{{ pretty(selected.output) }}</pre>
-        </details>
+      <div class="output">
+        <div v-if="selected" class="node-detail">
+          <div class="head">
+            <h3>{{ selected.id }}</h3>
+            <span class="badge" :class="selected.status">{{ selected.status }}</span>
+            <span class="meta">tokens {{ (selected.tokens || 0).toLocaleString() }} · cost ${{ (selected.cost || 0).toFixed(4) }}</span>
+          </div>
+          <div class="tabs">
+            <button :class="{ active: tab === 'output' }" @click="tab = 'output'">输出 output</button>
+            <button :class="{ active: tab === 'prompt' }" @click="tab = 'prompt'">输入 prompt</button>
+          </div>
+          <div class="content">
+            <JsonNode v-if="tab === 'output' && selected.output" :data="selected.output" />
+            <pre v-else-if="tab === 'prompt'">{{ selected.prompt || '(无)' }}</pre>
+            <p v-else class="empty">(无内容)</p>
+          </div>
+        </div>
+        <div v-else class="placeholder">点击右上流程图节点，查看该节点的输入 prompt 与格式化输出</div>
       </div>
     </div>
   </div>
@@ -53,6 +62,7 @@ import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { VueFlow } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
+import JsonNode from './JsonNode.vue'
 import { api } from '../api'
 
 const props = defineProps({ initialWorkflowId: { type: String, default: null } })
@@ -70,21 +80,15 @@ const nodes = ref([])
 const edges = ref([])
 const selected = ref(null)
 const runData = ref(null)
+const tab = ref('output')
 let timer = null
-
-const STATUS_COLOR = { done: '#22c55e', running: '#3b82f6', failed: '#ef4444', pending: '#94a3b8', cancelled: '#f59e0b', skipped: '#94a3b8' }
-
-function pretty(obj) { return JSON.stringify(obj, null, 2) }
 
 function buildGraph(graph, nodeStatus) {
   const ns = (graph?.nodes || []).map(n => ({
     id: n.id,
     position: { x: 0, y: 0 },
-    data: {
-      label: `${n.id} (${n.agent})`,
-      status: nodeStatus[n.id] || 'pending',
-    },
-    style: { background: '#fff', border: `2px solid ${STATUS_COLOR[nodeStatus[n.id]] || '#94a3b8'}`, borderRadius: '6px', padding: '8px' },
+    data: { label: n.id },
+    class: `status-${nodeStatus[n.id] || 'pending'}`,
   }))
   const es = (graph?.edges || []).map((e, i) => ({ id: `e${i}`, source: e.from, target: e.to }))
   return { nodes: ns, edges: es }
@@ -104,7 +108,7 @@ function applyLayout(nodesArr, graph) {
   while (qi < q.length) { const u = q[qi++]; (adj[u] || []).forEach(v => { level[v] = Math.max(level[v] || 0, (level[u] || 0) + 1); if (--indeg[v] === 0) q.push(v) }) }
   const byLevel = {}
   ids.forEach(id => { const l = level[id] || 0; (byLevel[l] = byLevel[l] || []).push(id) })
-  Object.keys(byLevel).forEach(l => { byLevel[l].forEach((id, i) => { const n = nodesArr.find(x => x.id === id); if (n) n.position = { x: i * 220, y: Number(l) * 140 } }) })
+  Object.keys(byLevel).forEach(l => { byLevel[l].forEach((id, i) => { const n = nodesArr.find(x => x.id === id); if (n) n.position = { x: i * 180, y: Number(l) * 100 } }) })
   return nodesArr
 }
 
@@ -152,14 +156,14 @@ async function poll() {
       const { nodes: ns, edges: es } = buildGraph(graph.graph, status)
       nodes.value = applyLayout(ns, graph.graph)
       edges.value = es
-      if (run.status === 'success' || run.status === 'failed') { running.value = false; clearInterval(timer) }
+      if (run.status === 'success' || run.status === 'failed' || run.status === 'cancelled') { running.value = false; clearInterval(timer) }
     } catch (e) { /* 轮询中忽略 */ }
   }, 2000)
 }
 
 function onNodeClick({ node }) {
   const s = (runData.value?.nodes || {})[node.id]
-  if (s) selected.value = { id: node.id, ...s }
+  if (s) { selected.value = { id: node.id, ...s }; tab.value = 'output' }
 }
 
 watch(workflowId, async (id) => {
@@ -179,27 +183,48 @@ onUnmounted(() => clearInterval(timer))
 
 <style scoped>
 .solve { display: flex; height: 100%; }
-.panel { width: 360px; padding: 16px; background: #fff; border-right: 1px solid #e2e8f0; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+.panel { width: 340px; padding: 16px; background: #fff; border-right: 1px solid #e2e8f0; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
 .panel h2 { margin: 0 0 8px; font-size: 16px; }
 .panel h3 { margin: 16px 0 8px; font-size: 14px; color: #475569; }
 .panel label { font-size: 13px; color: #475569; }
 .panel select, .panel textarea { padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-family: ui-monospace, monospace; font-size: 12px; }
-.panel textarea { height: 180px; resize: vertical; }
+.panel textarea { height: 160px; resize: vertical; }
 .panel button.primary { padding: 10px; background: #3b82f6; color: #fff; border: none; border-radius: 6px; cursor: pointer; }
 .panel button.primary:disabled { opacity: 0.5; cursor: not-allowed; }
 .panel button.stop { padding: 10px; background: #ef4444; color: #fff; border: none; border-radius: 6px; cursor: pointer; }
 .err { color: #dc2626; font-size: 12px; margin: 0; white-space: pre-wrap; }
 .stat { font-size: 13px; display: flex; flex-direction: column; gap: 4px; }
-.canvas { flex: 1; position: relative; background: #f8fafc; }
-.detail { position: absolute; right: 16px; top: 16px; width: 420px; max-height: calc(100% - 32px); overflow-y: auto; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-.detail h3 { margin: 0 0 8px; font-size: 14px; }
-.status { font-size: 12px; padding: 2px 8px; border-radius: 10px; color: #fff; }
-.status.done { background: #22c55e; }
-.status.running { background: #3b82f6; }
-.status.failed { background: #ef4444; }
-.status.pending { background: #94a3b8; }
-.status.cancelled { background: #f59e0b; }
-.meta { font-size: 12px; color: #64748b; margin-bottom: 8px; }
-.detail summary { cursor: pointer; font-size: 13px; font-weight: 600; margin: 8px 0; }
-.detail pre { font-size: 11px; background: #f8fafc; padding: 8px; border-radius: 4px; overflow-x: auto; white-space: pre-wrap; max-height: 200px; overflow-y: auto; }
+.right { flex: 1; display: flex; flex-direction: column; }
+.flow { height: 40%; border-bottom: 1px solid #e2e8f0; background: #f8fafc; }
+.output { flex: 1; overflow-y: auto; background: #fff; padding: 16px; }
+.node-detail .head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.node-detail h3 { margin: 0; font-size: 15px; }
+.badge { font-size: 12px; padding: 2px 8px; border-radius: 10px; color: #fff; text-transform: uppercase; }
+.badge.done { background: #22c55e; }
+.badge.running { background: #3b82f6; }
+.badge.failed { background: #ef4444; }
+.badge.pending { background: #94a3b8; }
+.badge.cancelled { background: #f59e0b; }
+.meta { font-size: 12px; color: #64748b; }
+.tabs { display: flex; gap: 8px; margin: 12px 0; border-bottom: 1px solid #e2e8f0; }
+.tabs button { padding: 6px 14px; border: none; background: transparent; cursor: pointer; font-size: 13px; color: #64748b; border-bottom: 2px solid transparent; }
+.tabs button.active { color: #3b82f6; border-bottom-color: #3b82f6; font-weight: 600; }
+.content { max-height: 60vh; overflow-y: auto; }
+.content pre { font-size: 11px; background: #f8fafc; padding: 10px; border-radius: 6px; overflow-x: auto; white-space: pre-wrap; }
+.empty { color: #94a3b8; font-size: 13px; }
+.placeholder { color: #94a3b8; font-size: 14px; display: flex; height: 100%; align-items: center; justify-content: center; }
+</style>
+
+<style>
+/* 节点状态样式（非 scoped：Vue Flow 节点渲染在独立 DOM） */
+.vue-flow__node.status-done { border: 2px solid #22c55e; background: #f0fdf4; border-radius: 6px; }
+.vue-flow__node.status-running { border: 2px solid #3b82f6; background: #eff6ff; border-radius: 6px; animation: node-pulse 1.2s ease-in-out infinite; }
+.vue-flow__node.status-pending { border: 2px solid #cbd5e1; background: #f8fafc; border-radius: 6px; opacity: 0.75; }
+.vue-flow__node.status-failed { border: 2px solid #ef4444; background: #fef2f2; border-radius: 6px; }
+.vue-flow__node.status-cancelled { border: 2px solid #f59e0b; background: #fffbeb; border-radius: 6px; }
+.vue-flow__node.status-skipped { border: 2px solid #94a3b8; background: #f8fafc; border-radius: 6px; }
+@keyframes node-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.45); }
+  50% { box-shadow: 0 0 0 8px rgba(59, 130, 246, 0); }
+}
 </style>
