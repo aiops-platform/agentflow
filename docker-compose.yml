@@ -1,0 +1,28 @@
+# AIOps Bug Fix 平台编排：backend（FastAPI 编排 API）+ frontend（Vue 流程图 UI）。
+# opencode serve / opensandbox-server / ES / Prometheus 跑在宿主机，经 host.docker.internal 访问。
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      AGENTFLOW_WORKDIR: /data
+      AGENTFLOW_STATE_BACKEND: sqlite
+      OPENCODE_URL: http://host.docker.internal:4090
+      SANDBOX_DOMAIN: host.docker.internal:8080
+      ES_URL: http://host.docker.internal:19200
+      PROMETHEUS_URL: http://host.docker.internal:19090
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./workdir:/data
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
