@@ -107,6 +107,9 @@ class DAGExecutor:
         abort = asyncio.Event()
 
         await self._publish(Event(EventType.RUN_STARTED, run_id, data={"workflow": wf.name}))
+        # 落盘 run 记录（status=running），供前端轮询进度（结束后更新为 success/failed）
+        await self.store.put_run(run_id, {"run_id": run_id, "workflow": wf.name,
+                                          "status": "running", "context": ctx.snapshot()})
 
         # 恢复：已 done 节点幂等跳过（复用缓存 output）
         if resume:
@@ -285,7 +288,7 @@ class DAGExecutor:
 
             ctx.set_node(node_id, status="done", output=output,
                          stdout=final_text, attempts=attempt + 1, prompt=prompt,
-                         session_id=resume_sid)
+                         session_id=resume_sid, tokens=tokens, cost=cost)
             return NodeResult(node_id, "done", output=output, stdout=final_text,
                               tokens=tokens, cost=cost, attempts=attempt + 1)
 

@@ -53,9 +53,32 @@ def test_health_and_run():
     resp = client.post("/run", json={"workflow": wf_path, "ticket": {"bug": {"title": "x"}}})
     assert resp.status_code == 200, resp.text
     body = resp.json()
-    assert body["status"] == "success"
-    assert body["nodes"]["triage"]["status"] == "done"
+    assert body["status"] == "started"  # 异步触发，返回 run_id
+    assert body["run_id"]
     print("  ✓ test_health_and_run")
+
+
+def test_workflow_crud():
+    client = TestClient(server.app)
+    yaml = ("name: wf1\n"
+            "inputs:\n  bug: { type: object }\n"
+            "nodes:\n  triage: { agent: triage, params: { bug: \"$.inputs.bug\" } }\n")
+
+    resp = client.post("/workflows", json={"name": "test-wf", "yaml": yaml})
+    assert resp.status_code == 200, resp.text
+    wid = resp.json()["id"]
+    assert resp.json()["graph"]["nodes"][0]["id"] == "triage"
+
+    lst = client.get("/workflows").json()
+    assert any(w["id"] == wid for w in lst)
+
+    got = client.get(f"/workflows/{wid}").json()
+    assert got["yaml"] == yaml
+    assert got["graph"]["nodes"][0]["agent"] == "triage"
+
+    assert client.delete(f"/workflows/{wid}").json() == {"ok": True}
+    assert client.get(f"/workflows/{wid}").status_code == 404
+    print("  ✓ test_workflow_crud")
 
 
 def test_build_store_dual_mode():
@@ -76,6 +99,7 @@ def test_build_store_dual_mode():
 
 def main() -> None:
     test_health_and_run()
+    test_workflow_crud()
     test_build_store_dual_mode()
     print("\nALL M5 SERVER TESTS PASS ✅")
 

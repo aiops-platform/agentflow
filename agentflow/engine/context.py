@@ -61,7 +61,7 @@ class WorkflowContext:
 
     def set_node(self, node_id: str, *, status: str, output: Any = None,
                  stdout: str = "", attempts: int = 0, prompt: str | None = None,
-                 session_id: str | None = None) -> None:
+                 session_id: str | None = None, tokens: int = 0, cost: float = 0.0) -> None:
         self.data["nodes"][node_id] = {
             "status": status,
             "output": output,
@@ -69,6 +69,8 @@ class WorkflowContext:
             "attempts": attempts,
             "prompt": prompt,
             "session_id": session_id,
+            "tokens": tokens,
+            "cost": cost,
         }
 
     def mark_failed(self, node_id: str, reason: str, stdout: str = "",

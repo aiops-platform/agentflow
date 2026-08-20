@@ -35,6 +35,14 @@ def parse(path: str | Path) -> WorkflowDef:
     return WorkflowDef.model_validate(load_yaml(path))
 
 
+def parse_yaml_str(yaml_str: str) -> WorkflowDef:
+    """从 YAML 字符串解析（供 API 保存/预览，不走文件）。"""
+    data = yaml.safe_load(yaml_str)
+    if not isinstance(data, dict):
+        raise WorkflowParseError("YAML 顶层必须是映射（应含 name/nodes/edges）")
+    return WorkflowDef.model_validate(data)
+
+
 def _ref_target(value: str) -> tuple[str, str] | None:
     """解析引用，返回 (root, rest)；非法返回 None。"""
     m = _REF_RE.match(value or "")
