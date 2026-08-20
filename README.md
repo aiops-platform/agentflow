@@ -62,7 +62,7 @@ python -m agentflow.tools.prometheus_metrics # Prometheus 指标查询 query_met
 | 里程碑 | 内容 | 状态 |
 |---|---|---|
 | M0 定义层 | 脚手架 + Pydantic schema + parser/dag + `validate` | ✅ 完成 |
-| M1 opencode 单节点 | HTTP+SSE 封装 `server_adapter` | ⏳ 待做 |
+| M1 opencode 单节点 | HTTP+SSE 封装 `server_adapter`（建 session→prompt→事件→输出，含 SSE 工具调用捕获） | ✅ 完成 |
 | M2 编排执行器 | 并发调度 + WorkflowContext + StateStore | ⏳ 待做 |
 | M3 数据源 MCP + 沙箱 | K8s/CMDB/拓扑 MCP + opensandbox 适配 | ⏳ 待做（数据源部分已完成 ES/指标） |
 | M4 审批 + 观测 | 写操作审批门禁 + Langfuse + OTel | ⏳ 待做 |
