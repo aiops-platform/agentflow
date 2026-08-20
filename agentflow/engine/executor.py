@@ -61,13 +61,18 @@ class RunResult:
 class DAGExecutor:
     def __init__(self, runtime: AgentRuntime, *, store: StateStore | None = None,
                  concurrency: int = 4, registry: AgentRegistry | None = None,
-                 event_bus: EventBus | None = None, approval: ApprovalManager | None = None):
+                 event_bus: EventBus | None = None, approval: ApprovalManager | None = None,
+                 max_cost: float = 0.0, max_tokens: int = 0):
         self.runtime = runtime
         self.store = store or InMemoryStore()
         self.concurrency = concurrency
         self.registry = registry
         self.event_bus = event_bus
         self.approval = approval
+        self.max_cost = max_cost
+        self.max_tokens = max_tokens
+        self._total_cost = 0.0
+        self._total_tokens = 0
 
     async def run(
         self,
@@ -156,6 +161,13 @@ class DAGExecutor:
                 nstate = (ctx.data.get("nodes") or {}).get(node_id)
                 await self.store.put_node(run_id, node_id, nstate or {"status": node_status[node_id]})
                 node_done[node_id].set()
+                # 成本预算检查：累计 cost/tokens，超限触发 abort（后续节点 cancelled）
+                if nr:
+                    self._total_cost += nr.cost or 0.0
+                    self._total_tokens += nr.tokens or 0
+                if (self.max_cost and self._total_cost >= self.max_cost) or \
+                   (self.max_tokens and self._total_tokens >= self.max_tokens):
+                    abort.set()
 
         tasks = [asyncio.create_task(run_node(n)) for n in wf.nodes if node_status[n] != "done"]
         if tasks:

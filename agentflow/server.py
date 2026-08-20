@@ -36,7 +36,8 @@ def _build_executor(runtime: OpenCodeAdapter) -> DAGExecutor:
     event_bus.subscribe(MetricsSink())
     approval = ApprovalManager(mode=settings.approval_mode, timeout_seconds=settings.approval_timeout)
     return DAGExecutor(runtime, store=build_store(), registry=registry,
-                       event_bus=event_bus, approval=approval)
+                       event_bus=event_bus, approval=approval,
+                       max_cost=settings.max_cost, max_tokens=settings.max_tokens)
 
 
 @app.get("/health")

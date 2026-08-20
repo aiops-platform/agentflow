@@ -88,7 +88,8 @@ def _cmd_run(args: argparse.Namespace) -> int:
     async def _run():
         runtime = OpenCodeAdapter()
         executor = DAGExecutor(runtime, store=store, registry=registry,
-                               event_bus=event_bus, approval=approval)
+                               event_bus=event_bus, approval=approval,
+                               max_cost=settings.max_cost, max_tokens=settings.max_tokens)
         try:
             return await executor.run(wf, inputs=inputs,
                                       run_id=args.resume, resume=bool(args.resume))

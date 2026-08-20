@@ -46,6 +46,10 @@ class Settings:
     approval_mode: str = os.environ.get("AGENTFLOW_APPROVAL_MODE", "auto")
     approval_timeout: float = float(os.environ.get("AGENTFLOW_APPROVAL_TIMEOUT", "300"))
 
+    # 成本预算（run 级 token/cost 上限，超限自动停；0 = 不限）
+    max_cost: float = float(os.environ.get("AGENTFLOW_MAX_COST", "0"))
+    max_tokens: int = int(os.environ.get("AGENTFLOW_MAX_TOKENS", "0"))
+
 
 settings = Settings()
 

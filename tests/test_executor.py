@@ -169,6 +169,26 @@ async def test_schema_error_retry():
     print("  ✓ test_schema_error_retry")
 
 
+async def test_cost_budget():
+    wf = _wf(
+        "budget",
+        {
+            "a": NodeDef(agent="a", params={"x": "$.inputs.x"}),
+            "b": NodeDef(agent="b", params={"x": "$.nodes.a.output.summary"}),
+            "c": NodeDef(agent="c", params={"x": "$.nodes.b.output.summary"}),
+        },
+        [EdgeDef(from_="a", to="b"), EdgeDef(from_="b", to="c")],
+    )
+    responses = {"a": {"summary": "1"}, "b": {"summary": "2"}, "c": {"summary": "3"}}
+    rt = FakeRuntime(responses)
+    ex = DAGExecutor(rt, concurrency=4, max_tokens=15)  # 每节点 tokens=10，第 2 个后累计 20 超限
+    result = await ex.run(wf, inputs={"x": "y"})
+    assert result.nodes["a"].status == "done"
+    assert result.nodes["b"].status == "done"
+    assert result.nodes["c"].status == "cancelled"
+    print("  ✓ test_cost_budget")
+
+
 async def main() -> None:
     await test_basic_dag()
     await test_when_condition_skip_and_run()
@@ -176,6 +196,7 @@ async def main() -> None:
     await test_on_failure_continue()
     await test_schema_error_retry()
     await test_non_json_output_fails_schema()
+    await test_cost_budget()
     print("\nALL M2 EXECUTOR TESTS PASS ✅")
 
 
