@@ -120,6 +120,16 @@ class OpenCodeAdapter:
             return NodeEvent(type=NodeEventType.DONE, **common)
         elif t == "permission.asked":
             return NodeEvent(type=NodeEventType.PERMISSION_ASKED, permission=props, **common)
+        elif t in ("session.error", "message.error"):
+            return NodeEvent(type=NodeEventType.ERROR,
+                             error=props.get("error") or props.get("message") or t, **common)
+        elif t == "session.status":
+            status = props.get("status")
+            if status in ("error", "failed"):
+                return NodeEvent(type=NodeEventType.ERROR,
+                                 error=props.get("error") or props.get("message") or f"session status: {status}",
+                                 **common)
+            return None
         return None
 
     # ── 主入口 ──
@@ -194,6 +204,11 @@ class OpenCodeAdapter:
                     yield NodeEvent(type=NodeEventType.ERROR, session_id=session_id, error=payload)
                     break
                 else:  # "end"：流结束但未收到 session.idle
+                    if not saw_text and not saw_step_finish:
+                        yield NodeEvent(
+                            type=NodeEventType.ERROR, session_id=session_id,
+                            error="SSE 流结束但未收到 session.idle 且无输出（模型 API 可能出错，详见 opencode 日志）",
+                        )
                     break
 
             # 兜底：SSE 缺文本/step-finish 时，从同步返回补（同步返回无工具调用，但含最终文本+token）

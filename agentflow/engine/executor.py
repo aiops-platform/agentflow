@@ -248,7 +248,11 @@ class DAGExecutor:
         tools = spec.tools if spec else None
         async for ev in self.runtime.run_node(agent, prompt, tools=tools):
             if ev.type is NodeEventType.ERROR:
-                raise RuntimeError(ev.error or "agent runtime error")
+                err = ev.error
+                if not err and ev.raw:
+                    props = ev.raw.get("properties") or {}
+                    err = props.get("error") or props.get("message")
+                raise RuntimeError(err or "agent runtime error")
             if ev.type is NodeEventType.TEXT and ev.text:
                 texts.append(ev.text)
             elif ev.type is NodeEventType.STEP_FINISH:
