@@ -5,6 +5,7 @@
 - ``artifact.py``：per-attempt 工作区路径
 - ``executor.py``：DAGExecutor（asyncio 并发调度）
 """
+from agentflow.engine.approval import ApprovalManager  # noqa: F401
 from agentflow.engine.context import WorkflowContext, eval_when  # noqa: F401
 from agentflow.engine.executor import DAGExecutor, NodeResult, RunResult  # noqa: F401
 from agentflow.engine.state import InMemoryStore, StateStore  # noqa: F401
@@ -17,4 +18,5 @@ __all__ = [
     "eval_when",
     "InMemoryStore",
     "StateStore",
+    "ApprovalManager",
 ]

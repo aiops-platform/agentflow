@@ -39,5 +39,9 @@ class Settings:
     langfuse_public_key: str | None = os.environ.get("LANGFUSE_PUBLIC_KEY") or None
     langfuse_secret_key: str | None = os.environ.get("LANGFUSE_SECRET_KEY") or None
 
+    # 审批（M4）：auto（自动通过，测试床）/ manual（人工，超时 auto-deny）
+    approval_mode: str = os.environ.get("AGENTFLOW_APPROVAL_MODE", "auto")
+    approval_timeout: float = float(os.environ.get("AGENTFLOW_APPROVAL_TIMEOUT", "300"))
+
 
 settings = Settings()

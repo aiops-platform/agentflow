@@ -15,9 +15,11 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from agentflow.agents import AgentRegistry
-from agentflow.config import AGENTS_DIR, WORKDIR
+from agentflow.config import AGENTS_DIR, WORKDIR, settings
 from agentflow.engine import DAGExecutor
+from agentflow.engine.approval import ApprovalManager
 from agentflow.engine.state import SqliteStore
+from agentflow.observability import EventBus, LlmTraceSink, MetricsSink
 from agentflow.opencode import OpenCodeAdapter
 from agentflow.workflow.dag import validate
 from agentflow.workflow.parser import WorkflowParseError, parse
@@ -76,12 +78,21 @@ def _cmd_run(args: argparse.Namespace) -> int:
     registry = AgentRegistry(AGENTS_DIR).load()
     runtime = OpenCodeAdapter()
     store = SqliteStore(WORKDIR / "state.db")
-    executor = DAGExecutor(runtime, store=store, registry=registry)
+
+    event_bus = EventBus()
+    event_bus.subscribe(LlmTraceSink(settings.langfuse_url,
+                                     settings.langfuse_public_key, settings.langfuse_secret_key))
+    event_bus.subscribe(MetricsSink())
+    approval = ApprovalManager(mode=settings.approval_mode, timeout_seconds=settings.approval_timeout)
+
+    executor = DAGExecutor(runtime, store=store, registry=registry,
+                           event_bus=event_bus, approval=approval)
     try:
         result = asyncio.run(executor.run(wf, inputs=inputs,
                                           run_id=args.resume, resume=bool(args.resume)))
     finally:
         asyncio.run(runtime.aclose())
+        asyncio.run(event_bus.close())
         store.close()
 
     print(f"\nrun_id: {result.run_id}  status: {result.status}")
