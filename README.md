@@ -161,6 +161,30 @@ for t in tests/*.py; do PYTHONPATH=. python "$t"; done
 #     pip install opensandbox opensandbox-code-interpreter
 ```
 
+## 前端 UI（流程配置 + Bug 解决可视化）
+
+Vue 3 + Vite + Vue Flow 单页应用，两个页面：
+
+- **流程配置**：粘贴 workflow YAML → 节点图（节点 + 方向箭头）预览 → 保存到后端 → 列表复用。
+- **Bug 解决**：粘贴 ticket JSON → 选流程 → 开始 → 流程图展示各节点状态（按状态着色）+ 点节点看输入 prompt / 输出 / token → 总 token 消耗。
+
+本地开发：
+
+```bash
+# 后端（另开终端）
+uvicorn agentflow.server:app --host 0.0.0.0 --port 8000
+# 前端（dev 代理 API 到 8000）
+cd frontend && npm install && npm run dev   # http://localhost:5173
+```
+
+Docker 部署（前后端一起）：
+
+```bash
+docker compose up --build
+# 前端 http://localhost:8080，后端 http://localhost:8000
+# 依赖宿主机的 opencode serve(4090) / opensandbox-server(8080) / ES(19200) / Prometheus(19090)
+```
+
 ## 测试床（端到端验收）
 
 两个故障场景的端到端验证（minikube + 3 个微服务 + ES/Prometheus/Grafana/Kibana）见 [testbed/README.md](testbed/README.md)：
