@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import sqlite3
 import uuid
 from datetime import datetime, timezone
@@ -96,6 +97,16 @@ class WorkflowStore:
 
 
 workflow_store = WorkflowStore(str(STATE_DB))
+
+
+def _read_nodes(run_id: str) -> dict:
+    """读 nodes 表所有节点状态（节点级 checkpoint，比 runs 表的 context 快照更新）。"""
+    conn = sqlite3.connect(str(STATE_DB))
+    try:
+        rows = conn.execute("SELECT node_id, state FROM nodes WHERE run_id=?", (run_id,)).fetchall()
+        return {nid: json.loads(state) for nid, state in rows}
+    finally:
+        conn.close()
 
 
 def _workflow_graph(wf) -> dict:
@@ -206,7 +217,8 @@ async def get_run(run_id: str) -> dict:
         await store.close()
     if run is None:
         raise HTTPException(status_code=404, detail="run 不存在")
-    nodes = (run.get("context") or {}).get("nodes", {})
+    # 聚合 nodes 表（节点级 checkpoint，实时）；为空时兜底 run 记录的 context.nodes
+    nodes = _read_nodes(run_id) or (run.get("context") or {}).get("nodes", {})
     total_tokens = sum((n.get("tokens") or 0) for n in nodes.values())
     total_cost = sum((n.get("cost") or 0.0) for n in nodes.values())
     return {
