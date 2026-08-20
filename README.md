@@ -81,9 +81,10 @@ curl -X POST localhost:8000/run -H 'Content-Type: application/json' \
 | 命令 | 作用 |
 |---|---|
 | `agentflow validate <wf.yaml>` | 静态校验（环 / 悬空节点 / JSONPath 合法性 + 拓扑序） |
-| `agentflow run <wf.yaml> [--trigger bug.json] [--resume run_id]` | 运行 workflow |
+| `agentflow run <wf.yaml> [--trigger bug.json] [--resume run_id] [--input '{...}'] [--invalidate-from node_id]` | 运行 workflow（resume 时 `--input` 补料、`--invalidate-from` 作废该节点及下游重跑） |
 | `agentflow list` | 列出可插拔 agent |
 | `agentflow inspect <run_id>` | 查看某次 run 各节点的输入 prompt + 结构化输出 + 原始 stdout |
+| `agentflow pause <run_id>` | 优雅停止某次 run（当前节点跑完即停，resume 可续跑） |
 | `agentflow opencode-setup [--apply]` | 接线到 opencode（注册 MCP + 生成 agent） |
 
 ## 配置（环境变量）
@@ -96,6 +97,7 @@ curl -X POST localhost:8000/run -H 'Content-Type: application/json' \
 | `AGENTFLOW_STATE_DSN` | `sqlite:///...` | Postgres DSN（`backend=postgres` 时） |
 | `AGENTFLOW_REDIS_URL` | `redis://localhost:6379/0` | Redis（`backend=redis` 时） |
 | `AGENTFLOW_APPROVAL_MODE` | `auto` | `auto` 自动过审 / `manual` 人工（超时 auto-deny） |
+| `AGENTFLOW_MAX_COST` / `AGENTFLOW_MAX_TOKENS` | `0`（不限） | run 级成本预算，超限自动停 |
 | `SANDBOX_DOMAIN` / `SANDBOX_IMAGE` / `SANDBOX_ENTRYPOINT` | `127.0.0.1:8080` / `opensandbox/code-interpreter:v1.0.2` / `/opt/opensandbox/code-interpreter.sh` | opensandbox 沙箱 |
 | `LANGFUSE_URL` / `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` | 空 | Langfuse 自托管（LLM 层观测） |
 | `DEEPSEEK_API_KEY` | 空 | DeepSeek API key，放 `.env`（已被 gitignore）；opencode 用它驱动 agent，默认模型见 `~/.config/opencode/opencode.json` 的 `model` 字段 |
@@ -117,7 +119,7 @@ DAGExecutor（asyncio 编排：拓扑排序 → 并发调度 → 条件边/重�
 
 ```
 agentflow/
-├── cli.py                  # python -m agentflow validate|run|list|opencode-setup
+├── cli.py                  # python -m agentflow validate|run|list|pause|opencode-setup
 ├── config.py               # 本地/生产配置（环境变量驱动）+ build_store
 ├── server.py               # REST API（POST /run + GET /health）
 ├── workflow/               # workflow schema + parser + dag（拓扑/环检测）

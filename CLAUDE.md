@@ -94,12 +94,15 @@ python -m agentflow list
 # 运行 workflow（需先启动 opencode serve + opencode-setup，见下）
 python -m agentflow run examples/order-service-quotation-print-fail.yaml \
     --trigger testbed/mock-datasource/fixtures/scenario1/ticket.json
-python -m agentflow run <wf.yaml> --resume <run_id>   # 断点续跑
+python -m agentflow run <wf.yaml> --resume <run_id>   # 断点续跑（跳过 done、重跑 failed）
+python -m agentflow run <wf.yaml> --resume <run_id> --input '{"x":1}'          # 补料续跑
+python -m agentflow run <wf.yaml> --resume <run_id> --invalidate-from rca      # 作废 rca 及下游重跑
+python -m agentflow pause <run_id>                    # 优雅停止（当前节点跑完即停）
 
 # 查看某次 run 各节点的输入 prompt + 结构化输出 + 原始 stdout
 python -m agentflow inspect <run_id>
 
-# 接线到 opencode（注册 6 个 MCP server + 生成 agent 到 ~/.config/opencode/agents/）
+# 接线到 opencode（注册 7 个 MCP server + 生成 agent 到 ~/.config/opencode/agents/）
 python -m agentflow opencode-setup --apply
 
 # 测试：tests/*.py 是独立脚本（assert 风格，非 pytest），无需真实 opencode
@@ -152,6 +155,6 @@ PYTHONPATH=. python tests/test_executor.py   # 单跑一个
 
 ## 配置（环境变量）
 
-全部经 `config.py` 的 `Settings` 收敛（凭据不进代码/YAML）。常用：`OPENCODE_URL`（默认 `http://127.0.0.1:4090`）、`AGENTFLOW_WORKDIR`（默认 `./workdir`，含 `state.db`，已被 gitignore）、`AGENTFLOW_STATE_BACKEND`/`AGENTFLOW_STATE_DSN`/`AGENTFLOW_REDIS_URL`、`AGENTFLOW_APPROVAL_MODE`（`auto`/`manual`）、`SANDBOX_*`、`LANGFUSE_*`。opencode 的模型/key 在 opencode 侧：默认模型在 `~/.config/opencode/opencode.json` 的 `model` 字段（当前 `deepseek/deepseek-v4-flash`），API key 放项目根 `.env`（`DEEPSEEK_API_KEY`，已 gitignore；opencode 不自动读 .env，启动 serve 时需 `set -a; source .env; set +a`）。
+全部经 `config.py` 的 `Settings` 收敛（凭据不进代码/YAML）。常用：`OPENCODE_URL`（默认 `http://127.0.0.1:4090`）、`AGENTFLOW_WORKDIR`（默认 `./workdir`，含 `state.db`，已被 gitignore）、`AGENTFLOW_STATE_BACKEND`/`AGENTFLOW_STATE_DSN`/`AGENTFLOW_REDIS_URL`、`AGENTFLOW_APPROVAL_MODE`（`auto`/`manual`）、`AGENTFLOW_MAX_COST`/`AGENTFLOW_MAX_TOKENS`（成本预算，0=不限）、`SANDBOX_*`、`LANGFUSE_*`。opencode 的模型/key 在 opencode 侧：默认模型在 `~/.config/opencode/opencode.json` 的 `model` 字段（当前 `deepseek/deepseek-v4-flash`），API key 放项目根 `.env`（`DEEPSEEK_API_KEY`，已 gitignore；opencode 不自动读 .env，启动 serve 时需 `set -a; source .env; set +a`）。
 
 **沙箱（opensandbox）两个坑**：① `Sandbox.create` 的 `entrypoint` 必须是 **list**（`["/opt/opensandbox/code-interpreter.sh"]`），不是字符串——否则 `POST /v1/sandboxes` 返回 422（沙箱创建失败，agent 会静默降级宿主机）。② 沙箱链路需 opensandbox-server 跑在 `127.0.0.1:8080`（`OPENSANDBOX_INSECURE_SERVER=YES opensandbox-server --config spike/sandbox.toml`），否则 MCP 工具 `run_python`/`run_shell` 不可达。
