@@ -29,6 +29,11 @@ class Settings:
         "AGENTFLOW_STATE_DSN", f"sqlite:///{WORKDIR / 'state.db'}"
     )
 
+    # 沙箱 opensandbox（M3）：本地 podman / 生产 K8s 由环境切换
+    sandbox_domain: str = os.environ.get("SANDBOX_DOMAIN", "127.0.0.1:8080")
+    sandbox_image: str = os.environ.get("SANDBOX_IMAGE", "opensandbox/code-interpreter:v1.0.2")
+    sandbox_entrypoint: str = os.environ.get("SANDBOX_ENTRYPOINT", "/opt/opensandbox/code-interpreter.sh")
+
     # 观测（M4）
     langfuse_url: str | None = os.environ.get("LANGFUSE_URL") or None
     langfuse_public_key: str | None = os.environ.get("LANGFUSE_PUBLIC_KEY") or None
