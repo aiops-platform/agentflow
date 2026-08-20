@@ -26,8 +26,9 @@ class FakeAdapter(OpenCodeAdapter):
         self.created_title: str | None = None
         self.sent_prompt: str | None = None
 
-    async def create_session(self, title: str | None = None) -> str:
+    async def create_session(self, title: str | None = None, agent: str | None = None) -> str:
         self.created_title = title
+        self.created_agent = agent
         return "ses_test"
 
     async def send_message(self, session_id: str, prompt: str) -> dict[str, Any]:
@@ -117,6 +118,7 @@ async def test_run_node_full():
     assert sf.tokens.total == 150 and sf.cost == 0.01
 
     assert a.created_title == "test-agent"
+    assert a.created_agent == "test-agent"
     assert a.sent_prompt == "hello"
     assert a.deleted == "ses_test"
     print("  ✓ test_run_node_full")

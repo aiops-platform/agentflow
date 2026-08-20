@@ -37,8 +37,11 @@ class OpenCodeAdapter:
 
     # ── HTTP 基础操作 ──
 
-    async def create_session(self, title: str | None = None) -> str:
-        r = await self._client.post(f"{self.base_url}/session", json={"title": title or "agentflow"})
+    async def create_session(self, title: str | None = None, agent: str | None = None) -> str:
+        body: dict[str, Any] = {"title": title or "agentflow"}
+        if agent:
+            body["agent"] = agent   # 指定 opencode subagent（system prompt + permission 生效）
+        r = await self._client.post(f"{self.base_url}/session", json=body)
         r.raise_for_status()
         return r.json()["id"]
 
@@ -140,12 +143,13 @@ class OpenCodeAdapter:
         tools: list[str] | None = None,
         idle_timeout: float = 120.0,
     ) -> AsyncIterator[NodeEvent]:
-        """运行单个节点：建 session → 挂 SSE → 发 prompt → 消费事件 → 删 session。
+        """运行单个节点：建 session（指定 subagent）→ 挂 SSE → 发 prompt → 消费事件 → 删 session。
 
-        ``agent`` 用于会话标题；agent 选择由 AgentRegistry 在 M2 接线，工具经 agent frontmatter
-        挂载（本方法 ``tools`` 参数当前仅记录，不直接生效）。
+        ``agent`` 对应 opencode 的 subagent 名（``opencode-setup`` 已生成）；建 session 时传给
+        ``POST /session`` 的 ``agent`` 字段，使该节点以对应 subagent 的 system prompt + permission 运行。
+        ``tools`` 参数当前仅记录（MCP 工具经 ``opencode mcp add`` 全局挂载）。
         """
-        session_id = await self.create_session(agent)
+        session_id = await self.create_session(title=agent, agent=agent)
         yield NodeEvent(type=NodeEventType.SESSION_CREATED, session_id=session_id)
 
         queue: asyncio.Queue = asyncio.Queue()
