@@ -208,6 +208,26 @@ async def run(req: RunRequest) -> dict:
     return {"run_id": run_id, "status": "started"}
 
 
+@app.post("/runs/{run_id}/stop")
+async def stop_run(run_id: str) -> dict:
+    """停止进行中的 run：设置 paused 标志 + 取消后台任务。"""
+    store = build_store()
+    try:
+        run = await store.get_run(run_id)
+        if run is None:
+            raise HTTPException(status_code=404, detail="run 不存在")
+        ctx = run.get("context") or {}
+        ctx.setdefault("meta", {})["paused"] = True
+        run["context"] = ctx
+        await store.put_run(run_id, run)
+    finally:
+        await store.close()
+    task = _run_tasks.pop(run_id, None)
+    if task and not task.done():
+        task.cancel()
+    return {"ok": True, "run_id": run_id}
+
+
 @app.get("/runs/{run_id}")
 async def get_run(run_id: str) -> dict:
     store = build_store()

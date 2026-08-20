@@ -190,7 +190,14 @@ class DAGExecutor:
 
         tasks = [asyncio.create_task(run_node(n)) for n in wf.nodes if node_status[n] != "done"]
         if tasks:
-            await asyncio.gather(*tasks)
+            try:
+                await asyncio.gather(*tasks)
+            except asyncio.CancelledError:
+                # stop 取消：标记 cancelled 落盘后重新抛出
+                await self.store.put_run(run_id, {"run_id": run_id, "workflow": wf.name,
+                                                  "status": "cancelled", "context": ctx.snapshot()})
+                await self._publish(Event(EventType.RUN_FINISHED, run_id, data={"status": "cancelled"}))
+                raise
 
         run_status = "failed" if any(r.status == "failed" for r in results.values()) else "success"
         await self.store.put_run(run_id, {"run_id": run_id, "workflow": wf.name,

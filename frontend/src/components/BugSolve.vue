@@ -12,6 +12,7 @@
       <textarea v-model="ticketJson" placeholder='{ "repo": "...", "bug_report": { "title": "..." } }' spellcheck="false"></textarea>
 
       <button class="primary" @click="start" :disabled="!workflowId || running">开始解决问题</button>
+      <button v-if="running" class="stop" @click="stop">停止</button>
       <p v-if="error" class="err">{{ error }}</p>
 
       <template v-if="runId">
@@ -127,6 +128,15 @@ async function start() {
   } catch (e) { error.value = e.message }
 }
 
+async function stop() {
+  try {
+    await api.stopRun(runId.value)
+    running.value = false
+    clearInterval(timer)
+    runStatus.value = 'cancelled'
+  } catch (e) { error.value = e.message }
+}
+
 async function poll() {
   clearInterval(timer)
   timer = setInterval(async () => {
@@ -177,6 +187,7 @@ onUnmounted(() => clearInterval(timer))
 .panel textarea { height: 180px; resize: vertical; }
 .panel button.primary { padding: 10px; background: #3b82f6; color: #fff; border: none; border-radius: 6px; cursor: pointer; }
 .panel button.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.panel button.stop { padding: 10px; background: #ef4444; color: #fff; border: none; border-radius: 6px; cursor: pointer; }
 .err { color: #dc2626; font-size: 12px; margin: 0; white-space: pre-wrap; }
 .stat { font-size: 13px; display: flex; flex-direction: column; gap: 4px; }
 .canvas { flex: 1; position: relative; background: #f8fafc; }

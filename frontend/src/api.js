@@ -22,4 +22,5 @@ export const api = {
   // run
   startRun: (payload) => req('/run', { method: 'POST', body: JSON.stringify(payload) }),
   getRun: (runId) => req(`/runs/${runId}`),
+  stopRun: (runId) => req(`/runs/${runId}/stop`, { method: 'POST' }),
 }
