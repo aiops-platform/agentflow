@@ -34,9 +34,12 @@ tools:
     assert "mode: subagent" in out
     assert "bash: deny" in out and "edit: deny" in out
     assert "read: allow" in out          # 默认只读允许
-    assert "webfetch: deny" in out       # 其余默认拒绝
+    assert "webfetch: deny" in out       # 其余内置工具默认拒绝
     assert "# 你是 log-analyst" in out   # 正文保留
-    assert "query_logs" not in out       # MCP 工具走全局注册，不写进 permission
+    # MCP 工具隔离：自己的 query_logs allow，其余 deny
+    assert "query_logs: allow" in out
+    assert "scale: deny" in out
+    assert "describe_pod: deny" in out
     print("  ✓ test_build_agent_md")
 
 

@@ -31,6 +31,17 @@ MCP_SERVERS: dict[str, str] = {
 OPENCODE_TOOLS = ["bash", "read", "edit", "glob", "grep", "webfetch",
                   "task", "todowrite", "websearch", "lsp", "skill"]
 
+# MCP server → 暴露的工具名（用于按 agent 隔离 MCP 工具）
+MCP_TOOLS: dict[str, list[str]] = {
+    "es-logs": ["query_logs"],
+    "prometheus-metrics": ["query_metrics"],
+    "k8s": ["describe_pod", "get_events", "scale", "apply", "exec_pod"],
+    "cmdb": ["get_ci"],
+    "service-topology": ["get_service", "get_dependencies", "get_dependents", "get_path"],
+    "opensandbox": ["run_python", "run_shell", "read_file", "write_file"],
+}
+ALL_MCP_TOOLS = sorted({t for tools in MCP_TOOLS.values() for t in tools})
+
 
 def build_mcp_config(python: str | None = None) -> dict:
     """生成 opencode.jsonc 的 ``mcp`` 配置片段。"""
@@ -40,13 +51,21 @@ def build_mcp_config(python: str | None = None) -> dict:
 
 
 def build_agent_md(name: str, our_md: str) -> str:
-    """把我们的 agent.md 转成 opencode agent 文件（frontmatter mode=subagent + permission + 正文）。"""
+    """把我们的 agent.md 转成 opencode agent 文件（frontmatter mode=subagent + permission + 正文）。
+
+    工具隔离：agent frontmatter ``tools`` 里的 MCP 工具名 → ``permission[tool]=allow``，
+    其余 MCP 工具 → ``deny``（MCP 工具经 ``permission`` 的 additionalProperties 声明）。
+    """
     body, fm = parse_agent_md(our_md)
     perm = fm.get("permission") or {}
+    agent_tools = set((fm.get("tools") or {}).keys())
 
     lines = ["---", f"description: {name} 职能 agent（AIOps bug-fix）", "mode: subagent", "permission:"]
     for tool in OPENCODE_TOOLS:
         action = perm.get(tool, "allow" if tool == "read" else "deny")
+        lines.append(f"  {tool}: {action}")
+    for tool in ALL_MCP_TOOLS:
+        action = "allow" if tool in agent_tools else "deny"
         lines.append(f"  {tool}: {action}")
     lines.append("---")
     lines.append("")
