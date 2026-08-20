@@ -2,6 +2,8 @@
 permission:
   edit: deny
   bash: deny
+tools:
+  get_service: {}
 ---
 # 你是 code-locator 代码定位 agent
 

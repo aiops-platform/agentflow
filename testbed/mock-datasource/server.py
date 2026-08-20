@@ -131,5 +131,80 @@ def query_metrics(
     )
 
 
+# ── CMDB / 服务拓扑 / K8s（签名与真实数据源一致；比真实版多 scenario 参数选 fixture）──
+
+
+@mcp.tool()
+def get_ci(scenario: str | None = None, service: str = "") -> dict:
+    """读 fixture 返回 CMDB 元数据（与真实 get_ci 签名一致）。"""
+    data = _load(scenario, "cmdb.json")
+    ci = data.get(service)
+    return _evidence("ok" if ci else "empty", 3600, service=service, ci=ci)
+
+
+def _topo_adj(scenario: str | None) -> dict[str, list[str]]:
+    data = _load(scenario, "topology.json")
+    adj: dict[str, list[str]] = {}
+    for e in data.get("edges", []):
+        adj.setdefault(e.get("caller"), []).append(e.get("callee"))
+    return adj
+
+
+@mcp.tool()
+def get_service(scenario: str | None = None, service: str = "") -> dict:
+    data = _load(scenario, "topology.json")
+    meta = (data.get("services") or {}).get(service)
+    return _evidence("ok" if meta else "empty", 3600, service=service, meta=meta)
+
+
+@mcp.tool()
+def get_dependencies(scenario: str | None = None, service: str = "") -> dict:
+    deps = sorted(set(_topo_adj(scenario).get(service, [])))
+    return _evidence("ok" if deps else "empty", 3600, service=service, dependencies=deps)
+
+
+@mcp.tool()
+def get_dependents(scenario: str | None = None, service: str = "") -> dict:
+    data = _load(scenario, "topology.json")
+    rev = {e.get("caller") for e in data.get("edges", []) if e.get("callee") == service}
+    return _evidence("ok" if rev else "empty", 3600, service=service, dependents=sorted(rev))
+
+
+@mcp.tool()
+def get_path(scenario: str | None = None, a: str = "", b: str = "") -> dict:
+    from collections import deque
+
+    adj = _topo_adj(scenario)
+    path = [a] if a == b else None
+    if path is None:
+        q = deque([[a]])
+        seen = {a}
+        while q:
+            p = q.popleft()
+            for nxt in adj.get(p[-1], []):
+                if nxt in seen:
+                    continue
+                np = p + [nxt]
+                if nxt == b:
+                    path = np
+                    break
+                seen.add(nxt)
+                q.append(np)
+            if path:
+                break
+    return _evidence("ok" if path else "empty", 3600, a=a, b=b, path=path)
+
+
+@mcp.tool()
+def describe_pod(scenario: str | None = None, pod: str | None = None, namespace: str | None = None) -> dict:
+    """读 fixture 返回 K8s pod/PVC/事件状态（与真实 describe_pod 签名一致）。"""
+    data = _load(scenario, "k8s.json")
+    pods = data.get("pods", [])
+    if pod:
+        pods = [p for p in pods if p.get("name") == pod]
+    return _evidence("ok" if pods else "empty", 60, pod=pod, namespace=namespace, pods=pods,
+                     pvcs=data.get("pvcs", []), events=data.get("events", []))
+
+
 if __name__ == "__main__":
     mcp.run()

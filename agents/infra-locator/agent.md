@@ -2,6 +2,9 @@
 permission:
   edit: deny
   bash: deny
+tools:
+  describe_pod: {}
+  get_events: {}
 ---
 # 你是 infra-locator 基础设施定位 agent
 

@@ -2,6 +2,8 @@
 permission:
   edit: deny
   bash: deny
+tools:
+  get_ci: {}
 ---
 # 你是 triage 问题接入 agent
 

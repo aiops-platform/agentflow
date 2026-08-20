@@ -8,6 +8,10 @@
 |---|---|---|---|
 | `es_logs.py` | `es-logs` | `query_logs` | log-analyst / trace-analyst |
 | `prometheus_metrics.py` | `prometheus-metrics` | `query_metrics` | metrics-analyst |
+| `k8s.py` | `k8s` | `describe_pod` / `get_events` / `scale` / `apply` / `exec_pod` | infra-locator / infra-remediator |
+| `cmdb.py` | `cmdb` | `get_ci` | triage / code-locator |
+| `topology.py` | `service-topology` | `get_service` / `get_dependencies` / `get_dependents` / `get_path` | code-locator / root-cause / fix-planner |
+| `masking.py` | — | 出站脱敏 | 所有数据源共用 |
 | `common.py` | — | 配置 / 时间 / evidence 封装 | 所有数据源共用 |
 
 ## 一、统一约定

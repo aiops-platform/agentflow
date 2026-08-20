@@ -4,6 +4,7 @@ permission:
   bash: deny
 tools:
   query_logs: {}
+  get_dependencies: {}
 ---
 # 你是 trace-analyst 链路分析 agent
 

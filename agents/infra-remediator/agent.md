@@ -2,6 +2,10 @@
 permission:
   edit: deny
   bash: ask
+tools:
+  scale: {}
+  apply: {}
+  exec_pod: {}
 ---
 # 你是 infra-remediator 基础设施修复 agent
 

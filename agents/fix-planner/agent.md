@@ -2,6 +2,9 @@
 permission:
   edit: deny
   bash: deny
+tools:
+  get_dependents: {}
+  get_service: {}
 ---
 # 你是 fix-planner 修复方案 agent
 

@@ -5,7 +5,10 @@ MCP 工具集。本包每个数据源一个文件：
 
 - ``es_logs.py``            —— Elasticsearch 日志查询（``query_logs``），log-analyst / trace-analyst
 - ``prometheus_metrics.py`` —— Prometheus 指标查询（``query_metrics``），metrics-analyst
-- （后续）k8s.py / cmdb.py / topology.py —— infra-locator / triage / root-cause
+- ``k8s.py``                —— K8s 只读（describe_pod/get_events）+ 写（scale/apply/exec），infra-locator / infra-remediator
+- ``cmdb.py``               —— CMDB（``get_ci``），triage / code-locator
+- ``topology.py``           —— 服务拓扑（get_service/get_dependencies/get_dependents/get_path），code-locator / root-cause / fix-planner
+- ``masking.py``            —— 出站脱敏
 
 统一约定：证据类返回带 ``query_status``（ok/empty/error）+ ``collected_at`` + ``ttl_seconds``，
 见 :mod:`agentflow.tools.common`。

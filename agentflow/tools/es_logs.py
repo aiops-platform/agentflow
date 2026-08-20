@@ -39,6 +39,7 @@ import httpx
 from fastmcp import FastMCP
 
 from agentflow.tools.common import evidence, get_env, resolve_time
+from agentflow.tools.masking import mask_data
 
 mcp = FastMCP("es-logs")
 
@@ -171,9 +172,10 @@ async def query_logs(
     hits = (data.get("hits") or {}).get("hits") or []
     total_hits = (data.get("hits") or {}).get("total") or {}
     total = total_hits.get("value", len(hits)) if isinstance(total_hits, dict) else len(hits)
-    logs = [_normalize(h) for h in hits]
+    logs = mask_data([_normalize(h) for h in hits])
 
     return evidence(
+
         "ok" if logs else "empty",
         600,
         count=len(logs),

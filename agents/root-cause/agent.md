@@ -2,6 +2,9 @@
 permission:
   edit: deny
   bash: deny
+tools:
+  get_dependents: {}
+  get_path: {}
 ---
 # 你是 root-cause 根因定位 agent
 
