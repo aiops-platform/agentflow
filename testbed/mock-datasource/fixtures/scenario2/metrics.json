@@ -1,0 +1,25 @@
+{
+  "result_type": "vector",
+  "result": [
+    {
+      "metric": {"__name__": "cpu_usage_percent", "service": "order-service", "namespace": "order"},
+      "value": [1787209200, "12"]
+    },
+    {
+      "metric": {"__name__": "cpu_usage_percent", "service": "warranty-service", "namespace": "order"},
+      "value": [1787209200, "8"]
+    },
+    {
+      "metric": {"__name__": "disk_usage_percent", "service": "order-service", "pvc": "data"},
+      "value": [1787209200, "18"]
+    },
+    {
+      "metric": {"__name__": "memory_usage_percent", "service": "order-service"},
+      "value": [1787209200, "42"]
+    },
+    {
+      "metric": {"__name__": "jvm_gc_pause_seconds_sum_rate", "service": "order-service"},
+      "value": [1787209200, "0.3"]
+    }
+  ]
+}

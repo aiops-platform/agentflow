@@ -1,0 +1,24 @@
+{
+  "pods": [
+    {
+      "name": "order-service-7b9c8d5f6-abcde",
+      "namespace": "order",
+      "phase": "Running",
+      "restart_count": 0,
+      "cpu_throttled": false,
+      "oom_killed": false,
+      "evicted": false
+    },
+    {
+      "name": "warranty-service-5c4b7a8d9e-fghij",
+      "namespace": "order",
+      "phase": "Running",
+      "restart_count": 0,
+      "cpu_throttled": false,
+      "oom_killed": false,
+      "evicted": false
+    }
+  ],
+  "pvcs": [],
+  "events": []
+}

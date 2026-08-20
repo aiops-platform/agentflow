@@ -1,0 +1,5 @@
+{
+  "gateway-service": {"repo": "https://github.com/xqfgbc/aiops-test-gateway-service", "owner": "platform-team", "env": "test"},
+  "order-service": {"repo": "https://github.com/xqfgbc/aiops-test-order-service", "owner": "order-team", "env": "test"},
+  "warranty-service": {"repo": "https://github.com/xqfgbc/aiops-test-warranty-service", "owner": "warranty-team", "env": "test"}
+}

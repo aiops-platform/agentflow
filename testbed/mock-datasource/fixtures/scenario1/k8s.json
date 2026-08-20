@@ -1,0 +1,17 @@
+{
+  "pods": [
+    {
+      "name": "order-service-7b9c8d5f6-abcde",
+      "namespace": "order",
+      "phase": "Running",
+      "restart_count": 0,
+      "cpu_throttled": true,
+      "oom_killed": false,
+      "evicted": false
+    }
+  ],
+  "pvcs": [
+    {"name": "data", "capacity": "512Mi", "used": "512Mi", "usage_percent": 100}
+  ],
+  "events": []
+}

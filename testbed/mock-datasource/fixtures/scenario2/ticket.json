@@ -1,0 +1,26 @@
+{
+  "sys_id": "9c2b4e6f8a1d3c5e7b9a",
+  "number": "INC0012456",
+  "short_description": "订单服务结账操作无响应",
+  "description": "业务人员点击「结账」后，页面一直转圈，无任何错误提示，结账无法完成。涉及保养车辆订单的结账，已持续 15 分钟。",
+  "category": "Application",
+  "subcategory": "order-service / checkout",
+  "impact": "1 - High",
+  "urgency": "1 - High",
+  "priority": "P1",
+  "state": "New",
+  "opened_at": "2026-08-19T15:20:00+08:00",
+  "opened_by": "li.si@company.com",
+  "assignment_group": "AIOps",
+  "cmdb_ci": {
+    "name": "order-service",
+    "service": "订单服务",
+    "environment": "production",
+    "namespace": "order"
+  },
+  "symptom": "结账无响应 / 挂起",
+  "correlation_hint": {
+    "trace_id": "trace-20260819-152000-def456",
+    "first_error": null
+  }
+}

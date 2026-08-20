@@ -1,0 +1,29 @@
+[
+  {
+    "timestamp": "2026-08-19T15:20:01.000+08:00",
+    "service": "order-service",
+    "level": "INFO",
+    "trace_id": "trace-20260819-152000-def456",
+    "message": "结账请求进入: orderId=ORD20260819001, 开始查询三包期...",
+    "stack_trace": null,
+    "logger": "com.company.order.controller.CheckoutController"
+  },
+  {
+    "timestamp": "2026-08-19T15:20:01.200+08:00",
+    "service": "warranty-service",
+    "level": "ERROR",
+    "trace_id": "trace-20260819-152000-def456",
+    "message": "查询三包期失败: org.apache.ibatis.binding.BindingException: Parameter 'fin' not found. Available parameters are [orderId, param2]",
+    "stack_trace": "org.apache.ibatis.binding.BindingException: Parameter 'fin' not found. Available parameters are [orderId, param2]\n  at org.apache.ibatis.binding.MapperMethod$ParamMap.get(MapperMethod.java:202)\n  at com.company.warranty.service.WarrantyServiceImpl.checkWarranty(WarrantyServiceImpl.java:88)\n  ...",
+    "logger": "com.company.warranty.service.WarrantyServiceImpl"
+  },
+  {
+    "timestamp": "2026-08-19T15:20:01.250+08:00",
+    "service": "warranty-data-service",
+    "level": "ERROR",
+    "trace_id": "trace-20260819-152000-def456",
+    "message": "MissingServletRequestParameterException: Required request parameter 'fin' is not present",
+    "stack_trace": "org.springframework.web.bind.MissingServletRequestParameterException: Required request parameter 'fin' is not present\n  at com.company.warrantydata.controller.WarrantyPeriodController.query(WarrantyPeriodController.java:42)\n  ...",
+    "logger": "com.company.warrantydata.controller.WarrantyPeriodController"
+  }
+]

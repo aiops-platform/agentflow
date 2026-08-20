@@ -1,0 +1,9 @@
+{
+  "root_cause_type": "infra",
+  "affected_services": ["order-service"],
+  "min_confidence": 0.85,
+  "symptom_type": "crash",
+  "log_evidence_contains": "java.io.IOException: No space left on device",
+  "metrics_evidence_contains": ["cpu 100%", "disk 100%"],
+  "infra_evidence_contains": "pvc 100%"
+}

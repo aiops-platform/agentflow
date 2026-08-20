@@ -1,0 +1,47 @@
+[
+  {
+    "timestamp": "2026-08-19T14:28:10.000+08:00",
+    "service": "order-service",
+    "level": "INFO",
+    "trace_id": "trace-20260819-143000-abc123",
+    "message": "收到报价单生成请求 orderId=ORD001",
+    "stack_trace": null,
+    "logger": "com.company.order.controller.QuotationController"
+  },
+  {
+    "timestamp": "2026-08-19T14:28:11.000+08:00",
+    "service": "order-service",
+    "level": "ERROR",
+    "trace_id": "trace-20260819-143000-abc123",
+    "message": "生成报价单失败: java.io.IOException: No space left on device",
+    "stack_trace": "java.io.IOException: No space left on device\n  at java.io.FileOutputStream.write0(Native Method)\n  at java.io.FileOutputStream.write(FileOutputStream.java:354)\n  at com.company.order.service.QuotationService.generateFile(QuotationService.java:128)\n  at com.company.order.service.QuotationService.generateQuotation(QuotationService.java:87)\n  at com.company.order.controller.QuotationController.quotation(QuotationController.java:35)\n  ...",
+    "logger": "com.company.order.service.QuotationService"
+  },
+  {
+    "timestamp": "2026-08-19T14:29:31.000+08:00",
+    "service": "order-service",
+    "level": "INFO",
+    "trace_id": "trace-20260819-142931-0002",
+    "message": "收到报价单生成请求 orderId=ORD002",
+    "stack_trace": null,
+    "logger": "com.company.order.controller.QuotationController"
+  },
+  {
+    "timestamp": "2026-08-19T14:29:32.000+08:00",
+    "service": "order-service",
+    "level": "ERROR",
+    "trace_id": "trace-20260819-142931-0002",
+    "message": "生成报价单失败: java.io.IOException: No space left on device",
+    "stack_trace": "java.io.IOException: No space left on device\n  at java.io.FileOutputStream.write0(Native Method)\n  at com.company.order.service.QuotationService.generateFile(QuotationService.java:128)\n  ...",
+    "logger": "com.company.order.service.QuotationService"
+  },
+  {
+    "timestamp": "2026-08-19T14:30:00.000+08:00",
+    "service": "order-service",
+    "level": "WARN",
+    "trace_id": "trace-20260819-143000-0003",
+    "message": "线程池任务队列已满，拒绝执行: 重试风暴导致线程池耗尽",
+    "stack_trace": null,
+    "logger": "com.company.order.service.QuotationService"
+  }
+]

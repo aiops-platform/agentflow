@@ -1,0 +1,19 @@
+# ── Python ──
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+
+# ── 运行工作区（artifact 落盘，不进版本库，DESIGN.md §五）──
+workdir/
+
+# ── 测试床：三个被测服务各自是独立 git 仓库，不在本仓库跟踪 ──
+testbed/services/
+
+# ── 本地配置（含 settings.local.json 权限/敏感信息）──
+.claude/
+
+# ── 日志 / 系统文件 ──
+*.log
+.DS_Store

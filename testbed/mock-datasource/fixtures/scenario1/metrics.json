@@ -1,0 +1,29 @@
+{
+  "result_type": "vector",
+  "result": [
+    {
+      "metric": {"__name__": "cpu_usage_percent", "service": "order-service", "namespace": "order", "pod": "order-service-7b9c8d5f6-abcde"},
+      "value": [1787207400, "100"]
+    },
+    {
+      "metric": {"__name__": "cpu_throttled_seconds_rate", "service": "order-service"},
+      "value": [1787207400, "0.98"]
+    },
+    {
+      "metric": {"__name__": "disk_usage_percent", "service": "order-service", "pvc": "data"},
+      "value": [1787207400, "100"]
+    },
+    {
+      "metric": {"__name__": "data_disk_free_bytes", "service": "order-service"},
+      "value": [1787207400, "0"]
+    },
+    {
+      "metric": {"__name__": "memory_usage_percent", "service": "order-service"},
+      "value": [1787207400, "61"]
+    },
+    {
+      "metric": {"__name__": "jvm_gc_pause_seconds_sum_rate", "service": "order-service"},
+      "value": [1787207400, "5.4"]
+    }
+  ]
+}

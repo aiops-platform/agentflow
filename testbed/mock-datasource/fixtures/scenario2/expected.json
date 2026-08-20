@@ -1,0 +1,8 @@
+{
+  "root_cause_type": "code",
+  "affected_services": ["warranty-service"],
+  "min_confidence": 0.85,
+  "symptom_type": "hang",
+  "log_evidence_contains": "Parameter 'fin' not found",
+  "ruled_out": "infra"
+}

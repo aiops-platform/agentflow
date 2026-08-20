@@ -1,0 +1,11 @@
+{
+  "services": {
+    "order-service": {"repo": "https://github.com/xqfgbc/aiops-test-order-service", "owner": "order-team", "namespace": "order"},
+    "warranty-service": {"repo": "https://github.com/xqfgbc/aiops-test-warranty-service", "owner": "warranty-team", "namespace": "order"},
+    "warranty-data-service": {"repo": "https://github.com/xqfgbc/aiops-test-warranty-data-service", "owner": "warranty-team", "namespace": "order"}
+  },
+  "edges": [
+    {"caller": "order-service", "callee": "warranty-service", "endpoint": "POST /checkWarranty", "source": "trace", "qps": 120},
+    {"caller": "warranty-service", "callee": "warranty-data-service", "endpoint": "POST /queryWarrantyPeriod", "source": "trace", "qps": 120}
+  ]
+}
