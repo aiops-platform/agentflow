@@ -15,7 +15,7 @@ class FakeRuntime:
     def __init__(self, resp: dict | str = None):
         self.resp = resp if resp is not None else {"summary": "ok", "symptom_type": "crash"}
 
-    async def run_node(self, agent, prompt, tools=None):
+    async def run_node(self, agent, prompt, tools=None, session_id=None):
         text = self.resp if isinstance(self.resp, str) else json.dumps(self.resp, ensure_ascii=False)
         yield NodeEvent(type=NodeEventType.SESSION_CREATED, session_id="s")
         yield NodeEvent(type=NodeEventType.TEXT, text=text)

@@ -239,6 +239,9 @@ class DAGExecutor:
         max_retry = node.retry.max if node.retry else 0
         last_err: str | None = None
         spec = self._spec(node.agent)
+        # resume 原 session：从 checkpoint 读 session_id（作废重跑 done 节点时接着原 session）
+        nstate = (ctx.data.get("nodes") or {}).get(node_id)
+        resume_sid = (nstate or {}).get("session_id")
 
         for attempt in range(max_retry + 1):
             paths.ensure_node(node_id, attempt)
@@ -248,7 +251,8 @@ class DAGExecutor:
                 params = self._crop_summary(node.params, params)
             prompt = self._build_prompt(node.agent, params, spec, run_id=run_id)
             try:
-                final_text, tokens, cost = await self._run_agent(node.agent, prompt, spec, run_id, node_id)
+                final_text, tokens, cost, resume_sid = await self._run_agent(
+                    node.agent, prompt, spec, run_id, node_id, session_id=resume_sid)
             except Exception as e:  # infra 失败 → retry
                 last_err = f"{type(e).__name__}: {e}"
                 continue
@@ -280,7 +284,8 @@ class DAGExecutor:
                                       stdout=final_text, attempts=attempt + 1)
 
             ctx.set_node(node_id, status="done", output=output,
-                         stdout=final_text, attempts=attempt + 1, prompt=prompt)
+                         stdout=final_text, attempts=attempt + 1, prompt=prompt,
+                         session_id=resume_sid)
             return NodeResult(node_id, "done", output=output, stdout=final_text,
                               tokens=tokens, cost=cost, attempts=attempt + 1)
 
@@ -288,12 +293,16 @@ class DAGExecutor:
         return NodeResult(node_id, "failed", error=last_err, attempts=max_retry + 1)
 
     async def _run_agent(self, agent: str, prompt: str, spec: AgentSpec | None,
-                         run_id: str, node_id: str) -> tuple[str, int, float]:
+                         run_id: str, node_id: str,
+                         session_id: str | None = None) -> tuple[str, int, float, str | None]:
         texts: list[str] = []
         tokens = 0
         cost = 0.0
+        sid = session_id
         tools = spec.tools if spec else None
-        async for ev in self.runtime.run_node(agent, prompt, tools=tools):
+        async for ev in self.runtime.run_node(agent, prompt, tools=tools, session_id=session_id):
+            if ev.type is NodeEventType.SESSION_CREATED and ev.session_id:
+                sid = ev.session_id
             if ev.type is NodeEventType.ERROR:
                 err = ev.error
                 if not err and ev.raw:
@@ -310,7 +319,7 @@ class DAGExecutor:
             elif ev.type is NodeEventType.TOOL_CALL and ev.tool is not None:
                 await self._publish(Event(EventType.TOOL_CALL, run_id, node_id,
                                           data={"name": ev.tool.name, "input": ev.tool.input}))
-        return " ".join(texts), tokens, cost
+        return " ".join(texts), tokens, cost, sid
 
     # ── 输出提取 ──
 

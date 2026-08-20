@@ -60,13 +60,15 @@ class WorkflowContext:
         return _resolve(self.data, ref) is not _MISSING
 
     def set_node(self, node_id: str, *, status: str, output: Any = None,
-                 stdout: str = "", attempts: int = 0, prompt: str | None = None) -> None:
+                 stdout: str = "", attempts: int = 0, prompt: str | None = None,
+                 session_id: str | None = None) -> None:
         self.data["nodes"][node_id] = {
             "status": status,
             "output": output,
             "stdout": stdout,
             "attempts": attempts,
             "prompt": prompt,
+            "session_id": session_id,
         }
 
     def mark_failed(self, node_id: str, reason: str, stdout: str = "",

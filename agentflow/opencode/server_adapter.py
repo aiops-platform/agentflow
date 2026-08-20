@@ -164,14 +164,18 @@ class OpenCodeAdapter:
         prompt: str,
         tools: list[str] | None = None,
         idle_timeout: float = 120.0,
+        session_id: str | None = None,
     ) -> AsyncIterator[NodeEvent]:
         """运行单个节点：建 session（指定 subagent）→ 挂 SSE → 发 prompt → 消费事件 → 删 session。
 
         ``agent`` 对应 opencode 的 subagent 名（``opencode-setup`` 已生成）；建 session 时传给
         ``POST /session`` 的 ``agent`` 字段，使该节点以对应 subagent 的 system prompt + permission 运行。
         ``tools`` 参数当前仅记录（MCP 工具经 ``opencode mcp add`` 全局挂载）。
+        提供 ``session_id`` 时 resume 原 session（不重建、不删除），用于断点续跑。
         """
-        session_id = await self.create_session(title=agent, agent=agent)
+        resume_session = session_id is not None
+        if not resume_session:
+            session_id = await self.create_session(title=agent, agent=agent)
         yield NodeEvent(type=NodeEventType.SESSION_CREATED, session_id=session_id)
 
         queue: asyncio.Queue = asyncio.Queue()
@@ -247,7 +251,8 @@ class OpenCodeAdapter:
                 await reader
             except asyncio.CancelledError:
                 pass
-            await self.delete_session(session_id)
+            if not resume_session:
+                await self.delete_session(session_id)
 
 
 def _final_text(msg: dict[str, Any]) -> str:

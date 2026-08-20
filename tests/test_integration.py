@@ -27,7 +27,7 @@ class MockLlm:
         self.responses = responses
         self.calls: list[str] = []
 
-    async def run_node(self, agent, prompt, tools=None):
+    async def run_node(self, agent, prompt, tools=None, session_id=None):
         self.calls.append(agent)
         resp = self.responses[agent]
         yield NodeEvent(type=NodeEventType.SESSION_CREATED, session_id=f"ses_{agent}")

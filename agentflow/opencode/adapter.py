@@ -20,6 +20,7 @@ class AgentRuntime(Protocol):
         agent: str,
         prompt: str,
         tools: list[str] | None = None,
+        session_id: str | None = None,
     ) -> AsyncIterator[NodeEvent]:
         """运行单个节点：建 session → 发 prompt → 流式产出事件（文本/工具调用/token/cost）。
 

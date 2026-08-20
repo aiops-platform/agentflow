@@ -13,7 +13,7 @@ from fastapi.testclient import TestClient
 
 
 class _FakeRuntime:
-    async def run_node(self, agent, prompt, tools=None):
+    async def run_node(self, agent, prompt, tools=None, session_id=None):
         yield NodeEvent(type=NodeEventType.TEXT,
                         text='{"summary": "报价单打印失败", "symptom_type": "crash"}')
         yield NodeEvent(type=NodeEventType.DONE)

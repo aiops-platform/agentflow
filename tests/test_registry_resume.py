@@ -42,7 +42,7 @@ class FakeRuntime:
         self.responses = responses
         self.calls: list[str] = []
 
-    async def run_node(self, agent: str, prompt: str, tools: list[str] | None = None):
+    async def run_node(self, agent: str, prompt: str, tools: list[str] | None = None, session_id: str | None = None):
         self.calls.append(agent)
         resp = self.responses[agent]
         if resp == "__ERROR__":
@@ -111,6 +111,37 @@ async def test_resume_extra_input_and_invalidate():
     print("  ✓ test_resume_extra_input_and_invalidate")
 
 
+async def test_resume_reuses_session_id():
+    class RecordingRuntime:
+        def __init__(self, responses):
+            self.responses = responses
+            self.sessions: list = []  # 记录每次 run_node 收到的 session_id
+
+        async def run_node(self, agent, prompt, tools=None, session_id=None):
+            self.sessions.append(session_id)
+            resp = self.responses[agent]
+            text = resp if isinstance(resp, str) else json.dumps(resp, ensure_ascii=False)
+            yield NodeEvent(type=NodeEventType.SESSION_CREATED, session_id=f"ses_{agent}")
+            yield NodeEvent(type=NodeEventType.TEXT, text=text)
+            yield NodeEvent(type=NodeEventType.STEP_FINISH, tokens=TokenUsage(total=10))
+            yield NodeEvent(type=NodeEventType.DONE)
+
+    store = InMemoryStore()
+    out = {"summary": "x"}
+    rt1 = RecordingRuntime({"triage": out, "log-analyst": out, "root-cause": out})
+    r1 = await DAGExecutor(rt1, store=store).run(_wf(), inputs={"bug": "x"}, run_id="run3")
+    assert r1.ok
+    # checkpoint 存了 session_id（第一次跑 session_id=None，捕获后存 ses_<agent>）
+    assert r1.context["nodes"]["a"]["session_id"] == "ses_triage"
+
+    rt2 = RecordingRuntime({"triage": out, "log-analyst": out, "root-cause": out})
+    r2 = await DAGExecutor(rt2, store=store).run(_wf(), run_id="run3", resume=True, invalidate_from="b")
+    assert r2.ok
+    # b 作废重跑时，复用了原 session_id（ses_log-analyst），而不是 None
+    assert "ses_log-analyst" in rt2.sessions
+    print("  ✓ test_resume_reuses_session_id")
+
+
 async def test_sqlite_roundtrip():
     with tempfile.TemporaryDirectory() as d:
         store = SqliteStore(Path(d) / "state.db")
@@ -130,6 +161,7 @@ async def main() -> None:
     test_registry_loads_all_agents()
     await test_resume_skips_done_reruns_failed()
     await test_resume_extra_input_and_invalidate()
+    await test_resume_reuses_session_id()
     await test_sqlite_roundtrip()
     print("\nALL M2 FINISH TESTS PASS ✅")
 

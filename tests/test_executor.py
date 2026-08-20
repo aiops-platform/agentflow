@@ -18,7 +18,7 @@ class FakeRuntime:
         self.calls: list[str] = []
         self.prompts: dict[str, str] = {}
 
-    async def run_node(self, agent: str, prompt: str, tools: list[str] | None = None):
+    async def run_node(self, agent: str, prompt: str, tools: list[str] | None = None, session_id: str | None = None):
         self.calls.append(agent)
         self.prompts[agent] = prompt
         resp = self.responses[agent]
@@ -154,7 +154,7 @@ async def test_schema_error_retry():
             super().__init__({})
             self.n = 0
 
-        async def run_node(self, agent, prompt, tools=None):
+        async def run_node(self, agent, prompt, tools=None, session_id=None):
             self.n += 1
             # 第 1 次：合法 JSON 但 symptom_type 非法 → schema 校验失败；第 2 次合法
             text = '{"symptom_type": "bogus"}' if self.n == 1 else '{"summary": "ok", "symptom_type": "crash"}'
