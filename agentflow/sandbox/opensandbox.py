@@ -40,7 +40,7 @@ class OpenSandboxAdapter:
         self._sandbox = await Sandbox.create(
             self.image,
             connection_config=ConnectionConfig(domain=self.domain),
-            entrypoint=self.entrypoint,
+            entrypoint=[self.entrypoint],
             env={"PYTHON_VERSION": self.python_version},
         )
         self._interpreter = await CodeInterpreter.create(sandbox=self._sandbox)
