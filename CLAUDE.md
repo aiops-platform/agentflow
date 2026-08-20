@@ -60,7 +60,7 @@ DESIGN.md 是「目标架构」而非「当前实现快照」，不少章节描�
 
 补充两个「半接线」点（也是 DESIGN 描述了但没完全打通）：
 
-- **观测实际能用的路径** = StateStore 记录每节点 `prompt`/`output` + `inspect` 命令（本地可查），**不是**远程 Langfuse/OTel（上面两个 sink 都不真正推送）。
+- **观测实际能用的路径** = StateStore 记录每节点 `prompt`/`output` + `inspect` 命令（本地回看）+ `ConsoleSink`（CLI 实时打印每节点 prompt/output）。远程 Langfuse/OTel 仍是半成品（两个 sink 都不真推送）。
 - **审批**：`ApprovalManager` 逻辑完整（approve/reject 两态、按 node 并发、超时 auto-deny），但 `server.py` 只有 `POST /run` + `GET /health`，**无 approve/reject 端点**——manual 模式的 `decide()` 只能进程内调用。
 
 milestone M0–M5 在 README 标 ✅，指的是「该里程碑的主干已通」，不等于 DESIGN 里每个细节都落地了。此外 `tools/README.md` 里「当前只实现两个数据源」已过时——5 个数据源 MCP（es-logs/prometheus-metrics/k8s/cmdb/topology）实际都已实现。
@@ -140,7 +140,7 @@ PYTHONPATH=. python tests/test_executor.py   # 单跑一个
 - `opencode/`：`adapter.py`（`AgentRuntime` Protocol，防腐层）+ `server_adapter.py`（HTTP+SSE 真实实现）。
 - `tools/`：数据源 MCP server（es-logs / prometheus-metrics / k8s / cmdb / topology），含 `masking.py` 脱敏。
 - `sandbox/`：opensandbox 适配器 + MCP server。
-- `observability/`：`event_bus` 扇出 Langfuse / OTel sink。
+- `observability/`：`event_bus` 扇出 Langfuse / OTel sink + `console.py`（`ConsoleSink`，CLI 实时打印每节点 prompt/output）。
 - `opencode_setup.py`：注册 MCP + 生成 opencode agent；`MCP_SERVERS` / `MCP_TOOLS` / `OPENCODE_TOOLS` 三张映射表在此。
 - 顶层 `agents/`（仓库根，非包）＝15 个职能 agent 定义；`examples/`＝场景 workflow YAML。
 
@@ -148,6 +148,7 @@ PYTHONPATH=. python tests/test_executor.py   # 单跑一个
 
 - **DAG 边 = 显式 `edges` + 隐式边**：节点 `params` 里写 `$.nodes.<upstream>.output` 即自动产生依赖边（`workflow/dag.py:build_edges`）。YAML 里 `params` 是 JSONPath 字符串引用，运行时由 `WorkflowContext.resolve_params` 解析成具体值。
 - **上下文命名空间分区**：`WorkflowContext.data` = `{meta, inputs, nodes}`，每个节点只写自己的 `nodes.<id>`，天然避免并行分支写冲突。引用路径：`$.inputs.*` / `$.meta.*` / `$.nodes.<id>.output.*`。
+- **trigger 文件格式**：`--trigger` 文件必须匹配 workflow 的 `inputs` 定义，即 `{"repo": "...", "bug_report": {...}}`（不是 ServiceNow 扁平工单格式），否则 `$.inputs.bug_report` 会是 null、run 假成功。
 - **条件边 `when`**：`eval_when` 只支持 `$.path`（真值）/ `$.path == literal` / `!= literal` 三种形式；False → 节点 skipped 并向下游传播。
 - **失败分类**：infra 失败（runtime 异常/ERROR 事件）走 `retry`；logic 失败（output schema 校验不过）走 `on_failure`（`abort`/`continue`）+ `on_schema_error`（`fail`/`retry`/`coerce`）。
 - **输出提取**：agent 最终文本 → 从文本里挖 JSON（`_parse_json`，支持非纯 JSON 兜底）→ 用 `spec.output_schema`（`domain` 里对应模型）`model_validate` → 落 context。失败节点写固定 `FailedOutput` 兜底结构，供 `on_failure: continue` 的下游读。
@@ -158,4 +159,4 @@ PYTHONPATH=. python tests/test_executor.py   # 单跑一个
 
 ## 配置（环境变量）
 
-全部经 `config.py` 的 `Settings` 收敛（凭据不进代码/YAML）。常用：`OPENCODE_URL`（默认 `http://127.0.0.1:4090`）、`AGENTFLOW_WORKDIR`（默认 `./workdir`，含 `state.db`，已被 gitignore）、`AGENTFLOW_STATE_BACKEND`/`AGENTFLOW_STATE_DSN`/`AGENTFLOW_REDIS_URL`、`AGENTFLOW_APPROVAL_MODE`（`auto`/`manual`）、`SANDBOX_*`、`LANGFUSE_*`。
+全部经 `config.py` 的 `Settings` 收敛（凭据不进代码/YAML）。常用：`OPENCODE_URL`（默认 `http://127.0.0.1:4090`）、`AGENTFLOW_WORKDIR`（默认 `./workdir`，含 `state.db`，已被 gitignore）、`AGENTFLOW_STATE_BACKEND`/`AGENTFLOW_STATE_DSN`/`AGENTFLOW_REDIS_URL`、`AGENTFLOW_APPROVAL_MODE`（`auto`/`manual`）、`SANDBOX_*`、`LANGFUSE_*`。opencode 的模型/key 在 opencode 侧：默认模型在 `~/.config/opencode/opencode.json` 的 `model` 字段（当前 `deepseek/deepseek-v4-flash`），API key 放项目根 `.env`（`DEEPSEEK_API_KEY`，已 gitignore；opencode 不自动读 .env，启动 serve 时需 `set -a; source .env; set +a`）。

@@ -16,7 +16,7 @@ mock-datasource/
 
 - `logs.json` / `metrics.json` 已被 `query_logs` / `query_metrics` 消费；
 - `k8s.json` / `topology.json` / `cmdb.json` 预留给后续 K8s / CMDB / 服务拓扑 MCP server；
-- `ticket.json` 是 workflow 触发入参；`expected.json` 是断言 golden（SCENARIOS.md §5.3）。
+- `ticket.json` 是 workflow 触发入参，格式为 `{ "repo": "...", "bug_report": { ...工单字段... } }`（匹配 workflow YAML 的 `inputs` 定义）；`expected.json` 是断言 golden（SCENARIOS.md §5.3）。
 
 ## 运行
 

@@ -1,27 +1,26 @@
 {
-  "sys_id": "8f3a2c1d4e5f6a7b8c9d",
-  "number": "INC0012345",
-  "short_description": "订单服务报价单打印失败",
-  "description": "业务人员点击「打印报价单」后长时间无响应，最终提示下载失败、无法生成报价单文件。影响全部业务人员，已持续 10 分钟。",
-  "category": "Application",
-  "subcategory": "order-service",
-  "impact": "1 - High",
-  "urgency": "1 - High",
-  "priority": "P1",
-  "state": "New",
-  "opened_at": "2026-08-19T14:30:00+08:00",
-  "opened_by": "zhang.san@company.com",
-  "assignment_group": "AIOps",
-  "cmdb_ci": {
-    "name": "order-service",
-    "service": "订单服务",
-    "environment": "production",
-    "namespace": "order",
-    "pod": "order-service-7b9c8d5f6-abcde"
-  },
-  "symptom": "报价单文件生成失败 / 下载失败",
-  "correlation_hint": {
-    "trace_id": "trace-20260819-143000-abc123",
-    "first_error": "java.io.IOException: No space left on device"
+  "repo": "https://github.com/xqfgbc/aiops-test-order-service",
+  "bug_report": {
+    "sys_id": "8f3a2c1d4e5f6a7b8c9d",
+    "number": "INC0012345",
+    "short_description": "订单服务报价单打印失败",
+    "description": "业务人员点击「打印报价单」后长时间无响应，最终提示下载失败、无法生成报价单文件。影响全部业务人员，已持续 10 分钟。",
+    "category": "Application",
+    "subcategory": "order-service",
+    "impact": "1 - High",
+    "urgency": "1 - High",
+    "priority": "P1",
+    "state": "New",
+    "opened_at": "2026-08-20T22:15:00+08:00",
+    "opened_by": "zhang.san@company.com",
+    "assignment_group": "AIOps",
+    "cmdb_ci": {
+      "name": "order-service",
+      "service": "订单服务",
+      "environment": "production",
+      "namespace": "order",
+      "pod": ""
+    },
+    "symptom": "报价单文件生成失败 / 下载失败"
   }
 }

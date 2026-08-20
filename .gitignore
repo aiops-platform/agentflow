@@ -17,3 +17,6 @@ testbed/services/
 # ── 日志 / 系统文件 ──
 *.log
 .DS_Store
+
+# ── 环境变量（含 API key，凭据不进版本库）──
+.env

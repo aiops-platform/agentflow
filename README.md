@@ -52,6 +52,8 @@ python -m agentflow validate examples/bug-fix-pipeline.yaml
 python -m agentflow run examples/order-service-quotation-print-fail.yaml \
     --trigger testbed/mock-datasource/fixtures/scenario1/ticket.json
 # 从 ticket 一路跑到 postmortem，每个节点 = 一个 opencode session，输出结构化结果
+# 运行过程实时打印每节点的输入 prompt + 输出 output + 状态（ConsoleSink）
+# trigger 文件格式：{"repo": "...", "bug_report": {...工单字段...}}，匹配 workflow 的 inputs 定义
 ```
 
 断点续跑（已 done 节点幂等跳过、failed 节点重跑）：
@@ -96,6 +98,7 @@ curl -X POST localhost:8000/run -H 'Content-Type: application/json' \
 | `AGENTFLOW_APPROVAL_MODE` | `auto` | `auto` 自动过审 / `manual` 人工（超时 auto-deny） |
 | `SANDBOX_DOMAIN` / `SANDBOX_IMAGE` / `SANDBOX_ENTRYPOINT` | `127.0.0.1:8080` / `opensandbox/code-interpreter:v1.0.2` / `/opt/opensandbox/code-interpreter.sh` | opensandbox 沙箱 |
 | `LANGFUSE_URL` / `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` | 空 | Langfuse 自托管（LLM 层观测） |
+| `DEEPSEEK_API_KEY` | 空 | DeepSeek API key，放 `.env`（已被 gitignore）；opencode 用它驱动 agent，默认模型见 `~/.config/opencode/opencode.json` 的 `model` 字段 |
 
 ## 架构一览
 
@@ -124,7 +127,7 @@ agentflow/
 ├── agents/                 # AgentRegistry（扫描 agents/ 目录）
 ├── opencode/               # HTTP+SSE 适配层（server_adapter）
 ├── sandbox/                # opensandbox 适配器 + MCP server
-└── observability/          # event_bus + Langfuse/OTel sink
+└── observability/          # event_bus + Langfuse/OTel sink + ConsoleSink（CLI 实时打印进度）
 agents/                     # 15 个职能 agent 定义（agent.md）
 examples/                   # 场景 workflow YAML
 docker/                     # Dockerfile + .dockerignore

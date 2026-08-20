@@ -18,7 +18,7 @@ from agentflow.agents import AgentRegistry
 from agentflow.config import AGENTS_DIR, WORKDIR, build_store, settings
 from agentflow.engine import DAGExecutor
 from agentflow.engine.approval import ApprovalManager
-from agentflow.observability import EventBus, LlmTraceSink, MetricsSink
+from agentflow.observability import ConsoleSink, EventBus, LlmTraceSink, MetricsSink
 from agentflow.opencode import OpenCodeAdapter
 from agentflow.opencode_setup import run_setup
 from agentflow.workflow.dag import validate
@@ -80,6 +80,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
     store = build_store()
 
     event_bus = EventBus()
+    event_bus.subscribe(ConsoleSink())
     event_bus.subscribe(LlmTraceSink(settings.langfuse_url,
                                      settings.langfuse_public_key, settings.langfuse_secret_key))
     event_bus.subscribe(MetricsSink())
