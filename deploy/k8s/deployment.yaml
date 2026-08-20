@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agentflow
+  namespace: aiops
+  labels:
+    app: agentflow
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: agentflow
+  template:
+    metadata:
+      labels:
+        app: agentflow
+    spec:
+      containers:
+      - name: agentflow
+        image: xqfgbc/aiops-agentflow:latest
+        ports:
+        - containerPort: 8000
+        env:
+        # opencode serve（LLM 运行时，独立部署）
+        - name: OPENCODE_URL
+          value: http://opencode:4090
+        # 状态存储：生产切 Postgres（本地 sqlite）
+        - name: AGENTFLOW_STATE_BACKEND
+          value: postgres
+        - name: AGENTFLOW_STATE_DSN
+          value: postgresql://agentflow:secret@postgres:5432/agentflow
+        - name: AGENTFLOW_WORKDIR
+          value: /data
+        # 审批：生产人工审批（本地测试床 auto）
+        - name: AGENTFLOW_APPROVAL_MODE
+          value: manual
+        # 沙箱 opensandbox-server（独立部署）
+        - name: SANDBOX_DOMAIN
+          value: opensandbox-server:8080
+        # 观测：自托管 Langfuse
+        - name: LANGFUSE_URL
+          value: http://langfuse:3000
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5

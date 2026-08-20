@@ -15,10 +15,9 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from agentflow.agents import AgentRegistry
-from agentflow.config import AGENTS_DIR, WORKDIR, settings
+from agentflow.config import AGENTS_DIR, build_store, settings
 from agentflow.engine import DAGExecutor
 from agentflow.engine.approval import ApprovalManager
-from agentflow.engine.state import SqliteStore
 from agentflow.observability import EventBus, LlmTraceSink, MetricsSink
 from agentflow.opencode import OpenCodeAdapter
 from agentflow.workflow.dag import validate
@@ -77,7 +76,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
 
     registry = AgentRegistry(AGENTS_DIR).load()
     runtime = OpenCodeAdapter()
-    store = SqliteStore(WORKDIR / "state.db")
+    store = build_store()
 
     event_bus = EventBus()
     event_bus.subscribe(LlmTraceSink(settings.langfuse_url,
@@ -93,7 +92,8 @@ def _cmd_run(args: argparse.Namespace) -> int:
     finally:
         asyncio.run(runtime.aclose())
         asyncio.run(event_bus.close())
-        store.close()
+        if hasattr(store, "close"):
+            store.close()
 
     print(f"\nrun_id: {result.run_id}  status: {result.status}")
     for nid, nr in result.nodes.items():

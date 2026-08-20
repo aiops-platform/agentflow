@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parent.parent        # my-agent-cc 根目录
 EXAMPLES_DIR = ROOT / "examples"
 AGENTS_DIR = ROOT / "agents"
 WORKDIR = Path(os.environ.get("AGENTFLOW_WORKDIR", str(ROOT / "workdir")))
+STATE_DB = WORKDIR / "state.db"
 
 
 @dataclass
@@ -28,6 +29,7 @@ class Settings:
     state_dsn: str = os.environ.get(
         "AGENTFLOW_STATE_DSN", f"sqlite:///{WORKDIR / 'state.db'}"
     )
+    state_backend: str = os.environ.get("AGENTFLOW_STATE_BACKEND", "sqlite")  # sqlite | postgres | memory
 
     # 沙箱 opensandbox（M3）：本地 podman / 生产 K8s 由环境切换
     sandbox_domain: str = os.environ.get("SANDBOX_DOMAIN", "127.0.0.1:8080")
@@ -45,3 +47,16 @@ class Settings:
 
 
 settings = Settings()
+
+
+def build_store():
+    """按 state_backend 构建 StateStore：本地 sqlite / 生产 postgres（占位）/ memory。"""
+    from agentflow.engine.state import InMemoryStore, SqliteStore
+
+    if settings.state_backend == "memory":
+        return InMemoryStore()
+    if settings.state_backend == "postgres":
+        raise NotImplementedError(
+            "Postgres StateStore 需异步驱动（psycopg），生产部署时接入（M5 占位）"
+        )
+    return SqliteStore(STATE_DB)

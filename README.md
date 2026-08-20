@@ -39,6 +39,8 @@ agentflow/
 ├── sandbox/                # opensandbox 适配                       （M3）
 └── observability/          # Langfuse + OTel                        （M4）
 examples/                   # 场景 workflow YAML（bug-fix-pipeline / 场景1 / 场景2）
+docker/                     # Dockerfile + .dockerignore
+deploy/k8s/                 # 生产 K8s 清单（Deployment + Service）
 testbed/                    # 测试床：manifests / fault-inject / mock-datasource / scripts
 spike/                      # 关键技术风险验证
 ```
@@ -66,7 +68,7 @@ python -m agentflow.tools.prometheus_metrics # Prometheus 指标查询 query_met
 | M2 编排执行器 | 并发调度 + WorkflowContext + StateStore | ⏳ 待做 |
 | M3 数据源 MCP + 沙箱 | 数据源 MCP 全（ES/指标/K8s/CMDB/拓扑 + 出站脱敏）+ opensandbox 适配器 | ✅ 完成 |
 | M4 审批 + 观测 | 写操作审批门禁 + event_bus 扇出 Langfuse/OTel sink | ✅ 完成 |
-| M5 部署 | Dockerfile + K8s 清单 | ⏳ 待做 |
+| M5 部署 | Dockerfile + K8s 清单 + REST API + config 双态 | ✅ 完成 |
 
 ## 测试床
 

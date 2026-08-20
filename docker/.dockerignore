@@ -1,0 +1,13 @@
+.git
+.claude
+spike
+testbed
+workdir
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+*.db
+*.log
+.env
+.DS_Store
