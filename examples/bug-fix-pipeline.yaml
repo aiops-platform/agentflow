@@ -20,7 +20,7 @@ nodes:
   review:    { agent: reviewer,         params: { diff: "$.nodes.fix.output.diff" } }
   commit:    { agent: committer,        params: { diff: "$.nodes.fix.output.diff", test: "$.nodes.test.output" }, approve: write }
   recap:     { agent: postmortem,       params: { rca: "$.nodes.rca.output", fix: "$.nodes.fix.output",
-                                                  remediate: "$.nodes.remediate.output" } }
+                                                  remediate: "$.nodes.remediate.output" }, on_schema_error: coerce }
 edges:
   - { from: triage, to: logs }
   - { from: triage, to: trace }

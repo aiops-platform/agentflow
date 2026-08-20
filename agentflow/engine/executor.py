@@ -293,9 +293,16 @@ class DAGExecutor:
             pass
         m = re.search(r"\{.*\}|\[.*\]", text, re.DOTALL)
         if m:
+            candidate = m.group(0)
             try:
-                return json.loads(m.group(0))
+                return json.loads(candidate)
             except json.JSONDecodeError:
+                pass
+            # json5 宽松兜底（尾逗号 / 注释 / 单引号 key 等 LLM 常见瑕疵）
+            try:
+                import json5
+                return json5.loads(candidate)
+            except Exception:  # noqa: BLE001 —— json5 不可用或仍解析失败则放弃
                 pass
         return None
 

@@ -76,7 +76,6 @@ def _cmd_run(args: argparse.Namespace) -> int:
         inputs = json.loads(Path(args.trigger).read_text(encoding="utf-8"))
 
     registry = AgentRegistry(AGENTS_DIR).load()
-    runtime = OpenCodeAdapter()
     store = build_store()
 
     event_bus = EventBus()
@@ -86,15 +85,19 @@ def _cmd_run(args: argparse.Namespace) -> int:
     event_bus.subscribe(MetricsSink())
     approval = ApprovalManager(mode=settings.approval_mode, timeout_seconds=settings.approval_timeout)
 
-    executor = DAGExecutor(runtime, store=store, registry=registry,
-                           event_bus=event_bus, approval=approval)
-    try:
-        result = asyncio.run(executor.run(wf, inputs=inputs,
-                                          run_id=args.resume, resume=bool(args.resume)))
-    finally:
-        asyncio.run(runtime.aclose())
-        asyncio.run(event_bus.close())
-        asyncio.run(store.close())
+    async def _run():
+        runtime = OpenCodeAdapter()
+        executor = DAGExecutor(runtime, store=store, registry=registry,
+                               event_bus=event_bus, approval=approval)
+        try:
+            return await executor.run(wf, inputs=inputs,
+                                      run_id=args.resume, resume=bool(args.resume))
+        finally:
+            await runtime.aclose()
+            await event_bus.close()
+            await store.close()
+
+    result = asyncio.run(_run())
 
     print(f"\nrun_id: {result.run_id}  status: {result.status}")
     for nid, nr in result.nodes.items():

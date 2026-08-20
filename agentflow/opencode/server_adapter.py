@@ -65,6 +65,18 @@ class OpenCodeAdapter:
         except httpx.HTTPError:
             pass
 
+    async def reply_permission(self, request_id: str, reply: str = "once") -> None:
+        """响应 opencode 的权限审批请求（reply: once / always / reject）。
+
+        fix/tester 这类写操作 agent 会触发 ``external_directory`` 等权限请求，
+        不响应则 opencode 一直等待导致超时。默认自动批准单次（once）。
+        """
+        try:
+            await self._client.post(f"{self.base_url}/permission/{request_id}/reply",
+                                    json={"reply": reply})
+        except httpx.HTTPError:
+            pass
+
     # ── SSE ──
 
     async def _sse_events(self, session_id: str | None) -> AsyncIterator[dict[str, Any]]:
@@ -189,6 +201,13 @@ class OpenCodeAdapter:
                 if kind == "event":
                     mapped = self._map_event(payload, session_id)
                     if mapped is None:
+                        continue
+                    if mapped.type is NodeEventType.PERMISSION_ASKED:
+                        # 自动批准单次，避免 opencode 卡在审批等待（否则写操作 agent 会超时）
+                        props = payload.get("properties") or {}
+                        req_id = props.get("id") or props.get("requestID") or payload.get("id")
+                        if req_id:
+                            await self.reply_permission(req_id, "once")
                         continue
                     if mapped.type is NodeEventType.TEXT:
                         # 跳过用户 prompt 的回显（SSE 会把用户消息 part 也当 text 事件发出来）
