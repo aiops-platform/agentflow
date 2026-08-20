@@ -48,12 +48,12 @@ DESIGN.md 是「目标架构」而非「当前实现快照」，不少章节描�
 
 | DESIGN.md 描述 | 实际实现状态 |
 |---|---|
-| 每 agent 一个 `spec.py`（input/output schema + pre/post 钩子） | ❌ 无；只有 `agent.md` frontmatter + `domain/schemas.py` 的 `AGENT_OUTPUT_SCHEMAS` |
-| `input_view` 三种传递策略（Summary/Reference/Full） | ❌ 无；`_build_prompt` 直接注入 `params` 解析值 |
-| 汇合 two_phase 深挖 + `read_upstream_output` MCP 工具 | ❌ 无 |
-| CLI `pause` / `resume --input` / `--invalidate-from` | ❌ 无；只有 `run --resume`（跳过 done、重跑 failed） |
-| 断点续跑 resume 原 opencode session（存 `session_id`） | ❌ 无；checkpoint 只存节点状态/output/prompt，不存 session_id |
-| run 级成本预算（token/cost 上限自动停） | ❌ 无 |
+| 每 agent 一个 `spec.py`（input/output schema + pre/post 钩子） | ✅ 已实现（`agents/<name>/spec.py` 声明 input_view/requires_sandbox；pre/post 钩子未做） |
+| `input_view` 三种传递策略（Summary/Reference/Full） | ✅ 已实现 summary/full 两态（NodeDef.input_view + spec.py；Reference 态未做） |
+| 汇合 two_phase 深挖 + `read_upstream_output` MCP 工具 | ✅ 已实现 read_upstream_output 工具 + prompt 注入 run_id（two_phase 自动深挖未做） |
+| CLI `pause` / `resume --input` / `--invalidate-from` | ✅ 已实现 |
+| 断点续跑 resume 原 opencode session（存 `session_id`） | ✅ 已实现（checkpoint 存 session_id，resume 用原 session） |
+| run 级成本预算（token/cost 上限自动停） | ✅ 已实现（AGENTFLOW_MAX_COST/AGENTFLOW_MAX_TOKENS） |
 | ServiceTopology 离线聚合 job（trace→拓扑 + 同步 CMDB） | ⚠️ 半成品：MCP 查询工具 4 个已完整（读静态 `data/topology.json`）；离线聚合 job 未做，拓扑是手写 JSON |
 | OTel `MetricsSink` 导出到 OTel | ⚠️ 只内存聚合 metrics（node/token/cost），未接 OTel SDK/collector，不导出 |
 | Langfuse `LlmTraceSink` 推送到 Langfuse | ⚠️ 只建本地 `self.traces` 结构；`_langfuse` client 建了但从没调 trace/generation API，`flush()` 是 no-op |
@@ -65,26 +65,19 @@ DESIGN.md 是「目标架构」而非「当前实现快照」，不少章节描�
 
 milestone M0–M5 在 README 标 ✅，指的是「该里程碑的主干已通」，不等于 DESIGN 里每个细节都落地了。此外 `tools/README.md` 里「当前只实现两个数据源」已过时——5 个数据源 MCP（es-logs/prometheus-metrics/k8s/cmdb/topology）实际都已实现。
 
-## TODO / 后续迭代（DESIGN 已设计、代码未实现）
+## TODO / 后续迭代（剩余半成品）
 
-> 上表 6 个 ❌ 项的待办清单。分组：token/上下文治理 → 断点续跑 → agent 元数据。
+6 个核心功能（input_view / two_phase / 成本预算 / spec.py / pause+resume / session resume）已实现，详见上表 ✅ 行。剩余待办：
 
-**token/上下文治理**
-- [ ] `input_view` 三种传递策略（Summary/Reference/Full）——`executor._build_prompt` 按 agent 声明裁剪上游字段，避免 10–50KB 大字段撑爆 context。
-- [ ] 汇合 two_phase 深挖 + `read_upstream_output` MCP 工具——rca 等汇合节点先看 summary 再按需拉 details（run_id 由 executor 绑进工具闭包，不依赖 LLM 传）。
-- [ ] run 级成本预算——累加 `step-finish` cost，超限自动停 + 告警。
-
-**断点续跑体验**
-- [ ] resume 原 opencode session——checkpoint 存 `session_id`，中断节点接着原 session 跑（省 token + 保上下文；opencode session 持久化在 SQLite，spike 4 已验证可行）。
-- [ ] CLI `pause <run_id>` / `resume --input` / `resume --invalidate-from`——可暂停、中途补料、局部作废重跑。
-
-**agent 元数据声明**
-- [ ] `spec.py` 声明文件（每 agent 一个：输入字段/输出 schema/沙箱需求/工具声明/pre-post 钩子），与 `input_view` 是同一件事的两面。
-
-**其余半成品（上表 ⚠️ 行）**
+**半成品（上表 ⚠️ 行）**
 - [ ] ServiceTopology 离线聚合 job（现为手写静态 `data/topology.json`）
 - [ ] OTel `MetricsSink` 真导出 + Langfuse `LlmTraceSink` 真推送
 - [ ] 审批 approve/reject HTTP 端点（`server.py` 只有 `/run` + `/health`）
+
+**已实现的 6 项的遗留小尾巴**
+- [ ] `input_view` 的 Reference 态（传引用 + 按需拉，当前只有 summary/full 两态）
+- [ ] two_phase 自动深挖（当前 read_upstream_output 由 agent 主动调，未做「先 summary 再自动深挖」的 prompt 模板）
+- [ ] `spec.py` 的 pre/post 钩子（当前只声明 input_view/requires_sandbox）
 
 ## 常用命令
 
