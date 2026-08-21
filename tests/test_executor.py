@@ -232,6 +232,51 @@ async def test_input_view_full():
     print("  ✓ test_input_view_full")
 
 
+async def test_approval_node_passthrough():
+    from agentflow.engine.approval import ApprovalManager
+    wf = _wf("approval", {
+        "fix": NodeDef(agent="a", params={}),
+        "approve": NodeDef(agent="approval", kind="approval", params={"output": "$.nodes.fix.output"}),
+        "test": NodeDef(agent="b", params={"fix": "$.nodes.approve.output"}),
+    }, [EdgeDef(from_="fix", to="approve"), EdgeDef(from_="approve", to="test")])
+    responses = {"a": {"summary": "fixed", "diff": "---"}, "b": {"summary": "passed"}}
+    rt = FakeRuntime(responses)
+    ex = DAGExecutor(rt, concurrency=4, approval=ApprovalManager(mode="auto"))
+    result = await ex.run(wf, inputs={})
+    assert result.nodes["approve"].status == "done"
+    assert result.nodes["approve"].output["summary"] == "fixed"   # 透传 fix.output
+    assert result.nodes["test"].status == "done"
+    assert result.ok
+    print("  ✓ test_approval_node_passthrough")
+
+
+async def test_approval_node_reject():
+    from agentflow.engine.approval import ApprovalManager
+    wf = _wf("approval_reject", {
+        "fix": NodeDef(agent="a", params={}),
+        "approve": NodeDef(agent="approval", kind="approval", params={"output": "$.nodes.fix.output"}),
+        "test": NodeDef(agent="b", params={"fix": "$.nodes.approve.output"}),
+    }, [EdgeDef(from_="fix", to="approve"), EdgeDef(from_="approve", to="test")])
+    responses = {"a": {"summary": "fixed"}, "b": {"summary": "passed"}}
+    rt = FakeRuntime(responses)
+    approval = ApprovalManager(mode="manual", timeout_seconds=5)
+    ex = DAGExecutor(rt, concurrency=4, approval=approval)
+
+    async def _reject():
+        for _ in range(200):
+            for req in approval.pending():
+                approval.reject(req.run_id, req.node_id)
+                return
+            await asyncio.sleep(0.02)
+
+    results = await asyncio.gather(ex.run(wf, inputs={}, run_id="r_rej"), _reject())
+    result = results[0]
+    assert result.nodes["approve"].status == "rejected-canceled"
+    assert result.nodes["test"].status == "cancelled"   # on_failure=abort 停下游
+    assert not result.ok
+    print("  ✓ test_approval_node_reject")
+
+
 async def main() -> None:
     await test_basic_dag()
     await test_when_condition_skip_and_run()
@@ -242,6 +287,8 @@ async def main() -> None:
     await test_cost_budget()
     await test_input_view_summary()
     await test_input_view_full()
+    await test_approval_node_passthrough()
+    await test_approval_node_reject()
     print("\nALL M2 EXECUTOR TESTS PASS ✅")
 
 

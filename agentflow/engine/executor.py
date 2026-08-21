@@ -155,7 +155,7 @@ class DAGExecutor:
                     result = await self._execute_node(node_id, wf.nodes[node_id], ctx, paths, run_id)
                     results[node_id] = result
                     node_status[node_id] = result.status
-                    if result.status == "failed" and wf.nodes[node_id].on_failure == "abort":
+                    if result.status in ("failed", "rejected-canceled") and wf.nodes[node_id].on_failure == "abort":
                         abort.set()
             except Exception as e:  # noqa: BLE001 —— 意外异常兜底，避免下游死等
                 node_status[node_id] = "failed"
@@ -200,7 +200,7 @@ class DAGExecutor:
             paused = False
         if paused:
             run_status = "cancelled"
-        elif any(r.status == "failed" for r in results.values()):
+        elif any(r.status in ("failed", "rejected-canceled") for r in results.values()):
             run_status = "failed"
         else:
             run_status = "success"
@@ -248,8 +248,28 @@ class DAGExecutor:
     def _spec(self, agent: str) -> AgentSpec | None:
         return self.registry.get(agent) if self.registry else None
 
+    async def _execute_approval_node(self, node_id: str, node: NodeDef,
+                                     ctx: WorkflowContext, run_id: str) -> NodeResult:
+        """审批节点：收集直接上游 output 供审批人参考，通过则透传、驳回则 rejected-canceled。"""
+        upstream = ctx.resolve_params(node.params)   # params 声明直接上游的 JSONPath 引用
+        approved = True
+        if self.approval is not None:
+            approved = await self.approval.request(
+                run_id, node_id, {"trigger": node.approve or "approval", "upstream": upstream})
+            await self._publish(Event(EventType.APPROVAL_DECIDED, run_id, node_id,
+                                      data={"trigger": node.approve, "approved": approved}))
+        if approved:
+            # 透传：单一上游透传其 output，多上游透传整个 dict
+            passthrough = upstream if len(upstream) != 1 else next(iter(upstream.values()))
+            ctx.set_node(node_id, status="done", output=passthrough, prompt="(人工审批节点)")
+            return NodeResult(node_id, "done", output=passthrough)
+        ctx.set_node(node_id, status="rejected-canceled", output=None, prompt="(人工审批节点)")
+        return NodeResult(node_id, "rejected-canceled", error="approval_rejected")
+
     async def _execute_node(self, node_id: str, node: NodeDef,
                             ctx: WorkflowContext, paths: ArtifactPaths, run_id: str) -> NodeResult:
+        if node.kind == "approval":
+            return await self._execute_approval_node(node_id, node, ctx, run_id)
         max_retry = node.retry.max if node.retry else 0
         last_err: str | None = None
         spec = self._spec(node.agent)

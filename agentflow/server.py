@@ -270,7 +270,9 @@ async def get_run(run_id: str) -> dict:
     total_tokens = sum((n.get("tokens") or 0) for n in nodes.values())
     total_cost = sum((n.get("cost") or 0.0) for n in nodes.values())
     approval = _approval_managers.get(run_id)
-    pending = [r.node_id for r in approval.pending() if r.run_id == run_id] if approval else []
+    pending = [{"node_id": r.node_id, "trigger": r.permission.get("trigger"),
+                "upstream": r.permission.get("upstream", {})}
+               for r in approval.pending() if r.run_id == run_id] if approval else []
     return {
         "run_id": run_id,
         "workflow": run.get("workflow"),

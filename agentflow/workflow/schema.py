@@ -28,8 +28,9 @@ class RetryDef(BaseModel):
 
 
 class NodeDef(BaseModel):
-    """单个节点（= 一个 opencode session）。"""
+    """单个节点（agent 类型 = 一个 opencode session；approval 类型 = 人工审批节点）。"""
     agent: str                                        # 职能 agent 名，对应 agents/<name>/
+    kind: Literal["agent", "approval"] = "agent"      # 节点类型：agent（默认）/ approval（人工审批，透传上游 output）
     params: dict[str, str] = Field(default_factory=dict)   # JSONPath 引用，声明即产生依赖边
     approve: str | None = None                        # 审批触发条件（如 high-risk / write）
     retry: RetryDef | None = None                     # infra 失败重试
