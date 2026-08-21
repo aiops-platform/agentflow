@@ -23,7 +23,7 @@ class _FakeAdapter:
     async def aclose(self): ...
 
 
-def _fake_build_executor(runtime):
+def _fake_build_executor(runtime, approval=None):
     return DAGExecutor(_FakeRuntime(), store=InMemoryStore())
 
 

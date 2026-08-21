@@ -52,6 +52,10 @@ class RunRequest(BaseModel):
     resume: bool = False
 
 
+class ApprovalAction(BaseModel):
+    node_id: str                       # 要批准/驳回的节点 id
+
+
 # ── WorkflowStore（复用 state.db 的 SQLite，加 workflows 表）──
 
 class WorkflowStore:
@@ -118,13 +122,14 @@ def _workflow_graph(wf) -> dict:
     }
 
 
-def _build_executor(runtime: OpenCodeAdapter) -> DAGExecutor:
+def _build_executor(runtime: OpenCodeAdapter, approval: ApprovalManager | None = None) -> DAGExecutor:
     registry = AgentRegistry(AGENTS_DIR).load()
     event_bus = EventBus()
     event_bus.subscribe(LlmTraceSink(settings.langfuse_url,
                                      settings.langfuse_public_key, settings.langfuse_secret_key))
     event_bus.subscribe(MetricsSink())
-    approval = ApprovalManager(mode=settings.approval_mode, timeout_seconds=settings.approval_timeout)
+    if approval is None:
+        approval = ApprovalManager(mode=settings.approval_mode, timeout_seconds=settings.approval_timeout)
     return DAGExecutor(runtime, store=build_store(), registry=registry,
                        event_bus=event_bus, approval=approval,
                        max_cost=settings.max_cost, max_tokens=settings.max_tokens)
@@ -174,6 +179,7 @@ async def delete_workflow(wid: str) -> dict:
 # ── run 触发 + 查询 ──
 
 _run_tasks: dict[str, asyncio.Task] = {}
+_approval_managers: dict[str, ApprovalManager] = {}
 
 
 @app.post("/run")
@@ -196,7 +202,9 @@ async def run(req: RunRequest) -> dict:
     run_id = req.run_id or f"run_{uuid.uuid4().hex[:12]}"
 
     runtime = OpenCodeAdapter()
-    executor = _build_executor(runtime)
+    approval = ApprovalManager(mode=settings.approval_mode, timeout_seconds=settings.approval_timeout)
+    _approval_managers[run_id] = approval
+    executor = _build_executor(runtime, approval=approval)
 
     async def _run_bg():
         try:
@@ -206,6 +214,28 @@ async def run(req: RunRequest) -> dict:
 
     _run_tasks[run_id] = asyncio.create_task(_run_bg())
     return {"run_id": run_id, "status": "started"}
+
+
+@app.post("/runs/{run_id}/approve")
+async def approve_node(run_id: str, req: ApprovalAction) -> dict:
+    """批准某节点的 pending 审批。"""
+    approval = _approval_managers.get(run_id)
+    if approval is None:
+        raise HTTPException(status_code=404, detail="run 无审批管理器")
+    if not approval.approve(run_id, req.node_id):
+        raise HTTPException(status_code=404, detail="无 pending 审批")
+    return {"ok": True, "run_id": run_id, "node_id": req.node_id, "approved": True}
+
+
+@app.post("/runs/{run_id}/reject")
+async def reject_node(run_id: str, req: ApprovalAction) -> dict:
+    """驳回某节点的 pending 审批。"""
+    approval = _approval_managers.get(run_id)
+    if approval is None:
+        raise HTTPException(status_code=404, detail="run 无审批管理器")
+    if not approval.reject(run_id, req.node_id):
+        raise HTTPException(status_code=404, detail="无 pending 审批")
+    return {"ok": True, "run_id": run_id, "node_id": req.node_id, "approved": False}
 
 
 @app.post("/runs/{run_id}/stop")
@@ -239,6 +269,8 @@ async def get_run(run_id: str) -> dict:
     nodes = _read_nodes(run_id) or (run.get("context") or {}).get("nodes", {})
     total_tokens = sum((n.get("tokens") or 0) for n in nodes.values())
     total_cost = sum((n.get("cost") or 0.0) for n in nodes.values())
+    approval = _approval_managers.get(run_id)
+    pending = [r.node_id for r in approval.pending() if r.run_id == run_id] if approval else []
     return {
         "run_id": run_id,
         "workflow": run.get("workflow"),
@@ -246,4 +278,5 @@ async def get_run(run_id: str) -> dict:
         "total_tokens": total_tokens,
         "total_cost": total_cost,
         "nodes": nodes,
+        "pending_approvals": pending,
     }
