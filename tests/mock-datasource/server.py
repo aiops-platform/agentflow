@@ -6,8 +6,8 @@
 
 用法::
 
-    MOCK_FIXTURE_DIR=testbed/mock-datasource/fixtures/scenario1 \
-        python testbed/mock-datasource/server.py
+    MOCK_FIXTURE_DIR=tests/mock-datasource/fixtures/scenario1 \
+        python tests/mock-datasource/server.py
 
 - ``MOCK_FIXTURE_DIR`` 直接指向某个场景目录（含 logs.json / metrics.json 等）即可；
 - 若指向 ``fixtures`` 父目录，用 ``MOCK_FIXTURE_SCENARIO=scenario2`` 或工具参数 ``scenario`` 选择子目录。

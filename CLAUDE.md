@@ -119,7 +119,7 @@ PYTHONPATH=. python tests/test_executor.py   # 单跑一个
   # opensandbox → Sandbox 类；opensandbox-code-interpreter → code_interpreter 模块
   # 注意 import 名是 `from code_interpreter import ...`，与包名不同，别只装 opensandbox 一个
   ```
-  装这两个只够跑 fake 沙箱测试；真实沙箱链路还需 opensandbox-server 服务 + podman（见 `spike/README.md`）。
+  装这两个只够跑 fake 沙箱测试；真实沙箱链路还需 opensandbox-server 服务 + podman（见 [aiops-platform/agentflow-spike](https://github.com/aiops-platform/agentflow-spike)）。
 
 跑 `run` 前的真实链路前置：`opencode serve --hostname 127.0.0.1 --port 4090` 已启动，且 `opencode-setup --apply` 已执行过（否则 agent 未注册成 opencode subagent）。
 
@@ -154,7 +154,7 @@ PYTHONPATH=. python tests/test_executor.py   # 单跑一个
 - **断点续跑**：节点级 checkpoint（`store.put_node`），resume 时已 `done` 节点幂等跳过、复用缓存 output。
 - **opencode 直连的关键坑**（`server_adapter.py` 头注释）：`POST /session/:id/message` 的同步返回**不含工具调用 part**，要观测工具调用必须消费 `GET /event` 的 SSE 流（`message.part.updated`）并按 `properties.sessionID` 过滤；`run_node` 因此先挂 SSE 再发 prompt。每个节点通过 `POST /session` 的 `agent` 字段切到对应 opencode subagent。
 - **StateStore 可选后端**：`AGENTFLOW_STATE_BACKEND` = `sqlite`(默认) / `postgres` / `redis` / `memory`，由 `config.py:build_store()` 分发。接口 async，节点级 upsert 契约保证并行分支互不覆盖。
-- **测试三层**（`SCENARIOS.md` §5.1）：L1 agent 单测、L2 workflow 集成（`tests/test_integration.py` 用 `MockLlm` 按 agent 返回脚本化 schema 输出 + 真实 registry/executor，断言根因/症状与 golden 一致，免真实 LLM）、L3 端到端测试床（`testbed/`，minikube + 微服务 + ES/Prometheus）。`testbed/mock-datasource/` 提供与真实工具签名一致的 mock MCP server（读 fixture JSON），供 L1/L2 使用。
+- **测试三层**（`SCENARIOS.md` §5.1）：L1 agent 单测、L2 workflow 集成（`tests/test_integration.py` 用 `MockLlm` 按 agent 返回脚本化 schema 输出 + 真实 registry/executor，断言根因/症状与 golden 一致，免真实 LLM）、L3 端到端测试床（独立 repo aiops-platform/agentflow-testbed，minikube + 微服务 + ES/Prometheus）。`tests/mock-datasource/` 提供与真实工具签名一致的 mock MCP server（读 fixture JSON），供 L1/L2 使用。
 
 ## 配置（环境变量）
 

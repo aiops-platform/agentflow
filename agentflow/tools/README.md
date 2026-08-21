@@ -72,12 +72,12 @@ opencode mcp add prometheus-metrics -- python -m agentflow.tools.prometheus_metr
 
 ## 五、mock 数据源（L1/L2 测试）
 
-真实数据源的 stub 版在 `testbed/mock-datasource/server.py`（工具签名一致，读 fixture JSON）。
+真实数据源的 stub 版在 `tests/mock-datasource/server.py`（工具签名一致，读 fixture JSON）。
 L1/L2 测试时把 agent 挂载的 MCP server 从真实换成 mock 即可：
 
 ```bash
-MOCK_FIXTURE_DIR=testbed/mock-datasource/fixtures/scenario1 \
-    python testbed/mock-datasource/server.py
+MOCK_FIXTURE_DIR=tests/mock-datasource/fixtures/scenario1 \
+    python tests/mock-datasource/server.py
 ```
 
-详见 `testbed/mock-datasource/`。
+详见 `tests/mock-datasource/`。

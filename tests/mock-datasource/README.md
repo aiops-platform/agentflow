@@ -22,12 +22,12 @@ mock-datasource/
 
 ```bash
 # 单场景：MOCK_FIXTURE_DIR 直接指向场景目录
-MOCK_FIXTURE_DIR=testbed/mock-datasource/fixtures/scenario1 \
-    python testbed/mock-datasource/server.py
+MOCK_FIXTURE_DIR=tests/mock-datasource/fixtures/scenario1 \
+    python tests/mock-datasource/server.py
 
 # 指向 fixtures 父目录时，用 MOCK_FIXTURE_SCENARIO 选场景（或工具参数 scenario）
-MOCK_FIXTURE_DIR=testbed/mock-datasource/fixtures MOCK_FIXTURE_SCENARIO=scenario2 \
-    python testbed/mock-datasource/server.py
+MOCK_FIXTURE_DIR=tests/mock-datasource/fixtures MOCK_FIXTURE_SCENARIO=scenario2 \
+    python tests/mock-datasource/server.py
 ```
 
 ## 工具

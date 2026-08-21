@@ -9,7 +9,7 @@
 | [DESIGN.md](DESIGN.md) | 技术选型与架构设计（含里程碑 M0–M5、领域 schema、评审记录） |
 | [SCENARIOS.md](SCENARIOS.md) | 两个故障场景 + 测试床搭建 + 踩坑记录 |
 | [SECURITY.md](SECURITY.md) | 沙箱安全基线 |
-| [spike/README.md](spike/README.md) | 4 个关键技术风险的 spike 验证记录 |
+| spike 验证 | 独立 repo：[aiops-platform/agentflow-spike](https://github.com/aiops-platform/agentflow-spike) |
 
 ## 怎么使用（快速开始）
 
@@ -19,7 +19,7 @@
 |---|---|
 | Python 3.11+ | 平台运行环境 |
 | opencode | 驱动 agent 的 LLM 运行时，先启动：`opencode serve --hostname 127.0.0.1 --port 4090` |
-| ES / Prometheus / K8s（可选） | 数据源；本地测试床见 `testbed/README.md`，或 L1/L2 用 mock 数据源 |
+| ES / Prometheus / K8s（可选） | 数据源；本地测试床见 [aiops-platform/agentflow-testbed](https://github.com/aiops-platform/agentflow-testbed)，或 L1/L2 用 mock 数据源 |
 
 ### 1. 安装
 
@@ -132,11 +132,10 @@ agentflow/
 └── observability/          # event_bus + Langfuse/OTel sink + ConsoleSink（CLI 实时打印进度）
 agents/                     # 15 个职能 agent 定义（agent.md）
 examples/                   # 场景 workflow YAML
+tests/                      # 单测 + L2 集成 + mock-datasource（mock 数据源 + fixtures）
+infra/                      # 基础设施：opensandbox(sandbox.toml) + opencode 配置 + docker-compose 联调
 docker/                     # Dockerfile + .dockerignore
 deploy/k8s/                 # 生产 K8s 清单（Deployment + Service）
-testbed/                    # 测试床：manifests / fault-inject / mock-datasource / scripts
-spike/                      # 关键技术风险验证
-tests/                      # 单测 + 集成测试（10 个文件）
 ```
 
 ## 里程碑
@@ -188,9 +187,10 @@ docker compose up -d
 
 ## 测试床（端到端验收）
 
-两个故障场景的端到端验证（minikube + 3 个微服务 + ES/Prometheus/Grafana/Kibana）见 [testbed/README.md](testbed/README.md)：
+两个故障场景的端到端验证（minikube + 3 个微服务 + ES/Prometheus/Grafana/Kibana）见独立 repo [aiops-platform/agentflow-testbed](https://github.com/aiops-platform/agentflow-testbed)：
 
 ```bash
-cd testbed && ./build-and-deploy.sh          # 一键打包→镜像→发布
-testbed/scripts/port-forward-all.sh          # 端口转发（自动重连）
+git clone https://github.com/aiops-platform/agentflow-testbed.git
+cd agentflow-testbed && ./build-and-deploy.sh   # 一键打包→镜像→发布
+./scripts/port-forward-all.sh                   # 端口转发（自动重连）
 ```
