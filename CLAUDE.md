@@ -61,7 +61,7 @@ DESIGN.md 是「目标架构」而非「当前实现快照」，不少章节描�
 补充两个「半接线」点（也是 DESIGN 描述了但没完全打通）：
 
 - **观测实际能用的路径** = StateStore 记录每节点 `prompt`/`output` + `inspect` 命令（本地回看）+ `ConsoleSink`（CLI 实时打印每节点 prompt/output）。远程 Langfuse/OTel 仍是半成品（两个 sink 都不真推送）。
-- **审批**：`ApprovalManager` 逻辑完整（approve/reject 两态、按 node 并发、超时 auto-deny），但 `server.py` 只有 `POST /run` + `GET /health`，**无 approve/reject 端点**——manual 模式的 `decide()` 只能进程内调用。另：opencode 侧的 `permission.asked`（`external_directory` 等工具级权限）已由 `server_adapter` 自动 `reply=once`，不再卡住 fix/tester 这类写操作 agent。
+- **审批**：`ApprovalManager` 逻辑完整（approve/reject 两态、按 node 并发、超时 auto-deny）。节点 `approve` 字段触发审批；`POST /runs/:id/approve` / `/reject`（body node_id）决定；`GET /runs/:id` 返回 `pending_approvals`，前端展示「通过/驳回」按钮。另：opencode 侧的 `permission.asked`（`external_directory` 等工具级权限）已由 `server_adapter` 自动 `reply=once`，不再卡住 fix/tester 这类写操作 agent。
 
 milestone M0–M5 在 README 标 ✅，指的是「该里程碑的主干已通」，不等于 DESIGN 里每个细节都落地了。此外 `tools/README.md` 里「当前只实现两个数据源」已过时——5 个数据源 MCP（es-logs/prometheus-metrics/k8s/cmdb/topology）实际都已实现。
 
@@ -72,7 +72,6 @@ milestone M0–M5 在 README 标 ✅，指的是「该里程碑的主干已通�
 **半成品（上表 ⚠️ 行）**
 - [ ] ServiceTopology 离线聚合 job（现为手写静态 `data/topology.json`）
 - [ ] OTel `MetricsSink` 真导出 + Langfuse `LlmTraceSink` 真推送
-- [ ] 审批 approve/reject HTTP 端点（`server.py` 只有 `/run` + `/health`）
 
 **已实现的 6 项的遗留小尾巴**
 - [ ] `input_view` 的 Reference 态（传引用 + 按需拉，当前只有 summary/full 两态）

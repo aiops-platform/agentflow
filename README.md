@@ -102,6 +102,24 @@ curl -X POST localhost:8000/run -H 'Content-Type: application/json' \
 | `LANGFUSE_URL` / `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` | 空 | Langfuse 自托管（LLM 层观测） |
 | `DEEPSEEK_API_KEY` | 空 | DeepSeek API key，放 `.env`（已被 gitignore）；opencode 用它驱动 agent，默认模型见 `~/.config/opencode/opencode.json` 的 `model` 字段 |
 
+## 人工审批（写操作 human-in-the-loop）
+
+高危写操作节点（fix/remediate/commit）通过 workflow YAML 的 `approve` 字段触发人工审批：
+
+```yaml
+fix:       { agent: fix-implementer, params: {...}, approve: high-risk }
+remediate: { agent: infra-remediator,  params: {...}, approve: write }
+commit:    { agent: committer,         params: {...}, approve: write }
+```
+
+- `AGENTFLOW_APPROVAL_MODE=manual` 启用人工审批（默认 `auto` 自动通过；manual 超时 auto-deny）。
+- 前端 bug 解决页会在节点等待审批时展示「通过 / 驳回」按钮；也可用 API：
+  ```bash
+  curl -X POST localhost:8000/runs/<run_id>/approve -H 'Content-Type: application/json' -d '{"node_id":"fix"}'
+  curl -X POST localhost:8000/runs/<run_id>/reject  -H 'Content-Type: application/json' -d '{"node_id":"fix"}'
+  ```
+- 驳回 → 节点标 `approval_rejected`，走 `on_failure`（`abort` 停下游 / `continue` 继续）。
+
 ## 架构一览
 
 ```
