@@ -86,7 +86,7 @@ def register_mcp_servers(python: str | None = None) -> list[str]:
         raise RuntimeError(
             "找不到 opencode 命令（不在 PATH 中）。请先安装 opencode 并确保可执行，例如：\n"
             "  export PATH=\"$HOME/.nvm/versions/node/v24.19.0/bin:$PATH\"\n"
-            "（opencode 经 npm 安装，位于 nvm 的 bin 目录；安装见 spike/README.md）"
+            "（opencode 经 npm 安装，位于 nvm 的 bin 目录；安装见 aiops/agentflow-spike 仓库 README）"
         )
     py = python or sys.executable
     commands: list[str] = []

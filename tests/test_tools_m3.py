@@ -59,8 +59,8 @@ async def test_k8s_readonly_and_mock():
 
 
 def test_mock_datasource_new_tools():
-    os.environ["MOCK_FIXTURE_DIR"] = "testbed/mock-datasource/fixtures"
-    spec = importlib.util.spec_from_file_location("ms3", "testbed/mock-datasource/server.py")
+    os.environ["MOCK_FIXTURE_DIR"] = "tests/mock-datasource/fixtures"
+    spec = importlib.util.spec_from_file_location("ms3", "tests/mock-datasource/server.py")
     ms = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(ms)
 

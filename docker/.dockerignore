@@ -1,7 +1,5 @@
 .git
 .claude
-spike
-testbed
 workdir
 __pycache__
 *.pyc

@@ -50,7 +50,7 @@ python -m agentflow validate examples/bug-fix-pipeline.yaml
 
 ```bash
 python -m agentflow run examples/order-service-quotation-print-fail.yaml \
-    --trigger testbed/mock-datasource/fixtures/scenario1/ticket.json
+    --trigger tests/mock-datasource/fixtures/scenario1/ticket.json
 # 从 ticket 一路跑到 postmortem，每个节点 = 一个 opencode session，输出结构化结果
 # 运行过程实时打印每节点的输入 prompt + 输出 output + 状态（ConsoleSink）
 # trigger 文件格式：{"repo": "...", "bug_report": {...工单字段...}}，匹配 workflow 的 inputs 定义
