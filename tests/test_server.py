@@ -76,6 +76,12 @@ def test_workflow_crud():
     assert got["yaml"] == yaml
     assert got["graph"]["nodes"][0]["agent"] == "triage"
 
+    # 更新
+    new_yaml = yaml.replace("wf1", "wf1-updated")
+    upd = client.put(f"/workflows/{wid}", json={"name": "test-wf-2", "yaml": new_yaml}).json()
+    assert upd["name"] == "test-wf-2"
+    assert client.get(f"/workflows/{wid}").json()["yaml"] == new_yaml
+
     assert client.delete(f"/workflows/{wid}").json() == {"ok": True}
     assert client.get(f"/workflows/{wid}").status_code == 404
     print("  ✓ test_workflow_crud")

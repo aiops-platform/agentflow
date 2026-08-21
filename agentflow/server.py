@@ -99,6 +99,13 @@ class WorkflowStore:
         conn.close()
         return cur.rowcount > 0
 
+    def update(self, wid: str, name: str, yaml: str) -> bool:
+        conn = sqlite3.connect(self.db_path)
+        cur = conn.execute("UPDATE workflows SET name=?, yaml=? WHERE id=?", (name, yaml, wid))
+        conn.commit()
+        conn.close()
+        return cur.rowcount > 0
+
 
 workflow_store = WorkflowStore(str(STATE_DB))
 
@@ -167,6 +174,17 @@ async def get_workflow(wid: str) -> dict:
     except Exception:  # noqa: BLE001
         graph = {}
     return {**wf, "graph": graph}
+
+
+@app.put("/workflows/{wid}")
+async def update_workflow(wid: str, req: WorkflowCreate) -> dict:
+    try:
+        wf = parse_yaml_str(req.yaml)  # 校验 YAML 合法性
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(status_code=400, detail=f"YAML 解析失败: {e}")
+    if not workflow_store.update(wid, req.name, req.yaml):
+        raise HTTPException(status_code=404, detail="workflow 不存在")
+    return {"id": wid, "name": req.name, "graph": _workflow_graph(wf)}
 
 
 @app.delete("/workflows/{wid}")
