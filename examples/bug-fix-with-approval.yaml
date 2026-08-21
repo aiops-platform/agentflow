@@ -1,0 +1,37 @@
+name: bug-fix-with-approval
+# 演示「审批节点」（kind=approval）：在 fix 和 test 之间插入人工审批。
+# 审批节点 params 声明「展示/透传哪个直接上游的 output」；通过则原样透传，
+# 驳回则节点标 rejected-canceled、on_failure: abort 停掉下游。
+inputs:
+  repo: { type: string, required: true }
+  bug_report: { type: object, required: true }
+nodes:
+  triage:  { agent: triage,          params: { bug: "$.inputs.bug_report" } }
+  logs:    { agent: log-analyst,     params: { bug: "$.nodes.triage.output.summary" } }
+  metrics: { agent: metrics-analyst, params: { bug: "$.nodes.triage.output.summary" } }
+  locate:  { agent: code-locator,    params: { bug: "$.nodes.triage.output.summary", repo: "$.inputs.repo" } }
+  rca:     { agent: root-cause,      params: { logs: "$.nodes.logs.output", metrics: "$.nodes.metrics.output", code: "$.nodes.locate.output" } }
+  plan:    { agent: fix-planner,     params: { rca: "$.nodes.rca.output" } }
+  fix:     { agent: fix-implementer, params: { plan: "$.nodes.plan.output" } }
+  # ── 审批节点：人工批准 fix 后，把 fix.output 原样透传给 test ──
+  approve-fix:
+    agent: approval
+    kind: approval
+    params: { output: "$.nodes.fix.output" }
+    approve: high-risk
+  test:    { agent: tester,          params: { fix: "$.nodes.approve-fix.output" } }
+  review:  { agent: reviewer,        params: { diff: "$.nodes.approve-fix.output.diff" } }
+  commit:  { agent: committer,       params: { diff: "$.nodes.approve-fix.output.diff", test: "$.nodes.test.output" } }
+edges:
+  - { from: triage, to: logs }
+  - { from: triage, to: metrics }
+  - { from: triage, to: locate }
+  - { from: logs, to: rca }
+  - { from: metrics, to: rca }
+  - { from: locate, to: rca }
+  - { from: rca, to: plan }
+  - { from: plan, to: fix }
+  - { from: fix, to: approve-fix }
+  - { from: approve-fix, to: test }
+  - { from: test, to: review }
+  - { from: review, to: commit }
