@@ -120,6 +120,8 @@ commit:    { agent: committer,         params: {...}, approve: write }
   ```
 - 驳回 → 节点标 `approval_rejected`，走 `on_failure`（`abort` 停下游 / `continue` 继续）。
 
+也可用**审批节点**（`kind: approval`）把审批做成流程的显式步骤：展示直接上游 output、通过则原样透传、驳回标 `rejected-canceled`。示例见 `examples/bug-fix-with-approval.yaml`。
+
 ## 架构一览
 
 ```
