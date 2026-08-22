@@ -10,6 +10,7 @@
 | [DESIGN-v2.md](DESIGN-v2.md) | v2 补充：实现阶段新增/增强的能力（审批节点、ConsoleSink、json5、permission 自动 reply、成本预算、input_view 裁剪） |
 | [SCENARIOS.md](SCENARIOS.md) | 两个故障场景 + 测试床搭建 + 踩坑记录 |
 | [SECURITY.md](SECURITY.md) | 沙箱安全基线 |
+| [TODO.md](TODO.md) | 实现待办清单（按优先级排序的差距项） |
 | spike 验证 | 独立 repo：[aiops-platform/agentflow-spike](https://github.com/aiops-platform/agentflow-spike) |
 
 ## 怎么使用（快速开始）
