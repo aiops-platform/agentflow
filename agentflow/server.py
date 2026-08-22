@@ -147,6 +147,15 @@ async def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/agents")
+async def list_agents() -> list[dict]:
+    """列出已注册的职能 agents（name + description + tools）。"""
+    registry = AgentRegistry(AGENTS_DIR).load()
+    return [{"name": name, "description": registry.get(name).description,
+             "tools": registry.get(name).tools}
+            for name in registry.names()]
+
+
 # ── workflow CRUD ──
 
 @app.post("/workflows")
